@@ -131,6 +131,90 @@ body {
   margin-bottom: 8px;
 }
 
+/* 账户列表 */
+.account-list {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f8f9fb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 6px;
+  border: 2px solid transparent;
+}
+.account-card:hover {
+  background: #eef0f5;
+  border-color: var(--primary);
+  transform: translateX(3px);
+}
+.account-card-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.account-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.account-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.account-card-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.account-card-arrow {
+  font-size: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+body.theme-pink .account-card {
+  background: #222;
+  border-color: #333;
+}
+body.theme-pink .account-card:hover {
+  background: #2a2a2a;
+  border-color: #39ff14;
+}
+body.theme-pink .account-card-name { color: #e0e0e0; }
+body.theme-pink .account-card-arrow { color: #39ff14; }
+
+/* 侧边栏用户信息 */
+.sidebar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin: 0 8px 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 10px;
+}
+.sidebar-user-icon { font-size: 18px; }
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.theme-yellow .sidebar-user-info { background: rgba(0,0,0,0.08); }
+body.theme-yellow .sidebar-user-name { color: #4a3800; }
+body.theme-pink .sidebar-user-info { background: rgba(57,255,20,0.1); }
+body.theme-pink .sidebar-user-name { color: #39ff14; }
+
 /* 数字键盘 */
 .login-keypad {
   display: grid;

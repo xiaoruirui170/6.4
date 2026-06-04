@@ -8,18 +8,38 @@
 </head>
 <body>
 
-  <!-- ========== 登录密码页 ========== -->
+  <!-- ========== 登录页 ========== -->
   <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
-      <div class="login-icon">🔒</div>
-      <h2 class="login-title">欢迎使用我的账本</h2>
-      <p class="login-sub">请输入6位数字密码</p>
-      <div class="login-dots" id="loginDots">
-        <span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>
-        <span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>
+      <div class="login-icon">📒</div>
+      <h2 class="login-title">我的账本</h2>
+
+      <!-- 步骤1：选择/创建账户 -->
+      <div id="loginStepAccount" style="display:block">
+        <p class="login-sub">选择账户或创建新账户</p>
+        <div class="account-list" id="accountList"></div>
+        <button class="btn-save btn-full" style="margin-top:12px" onclick="showCreateAccount()">➕ 创建新账户</button>
+        <div id="createAccountForm" style="display:none;margin-top:12px">
+          <input type="text" id="newAccountName" class="modal-input" placeholder="输入用户名（如：小明）" maxlength="10" style="margin-bottom:8px">
+          <div style="display:flex;gap:8px">
+            <button class="btn-save" style="flex:1" onclick="doCreateAccount()">创建</button>
+            <button class="btn-cancel" style="flex:1" onclick="hideCreateAccount()">取消</button>
+          </div>
+          <p class="login-error" id="createAccountError"></p>
+        </div>
       </div>
-      <p class="login-error" id="loginError"></p>
-      <div class="login-keypad" id="loginKeypad"></div>
+
+      <!-- 步骤2：输入密码 -->
+      <div id="loginStepPwd" style="display:none">
+        <p class="login-sub" id="loginTargetUser"></p>
+        <div class="login-dots" id="loginDots">
+          <span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>
+          <span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>
+        </div>
+        <p class="login-error" id="loginError"></p>
+        <div class="login-keypad" id="loginKeypad"></div>
+        <button class="btn-cancel btn-full" style="margin-top:8px" onclick="goBackToAccountList()">← 返回账户列表</button>
+      </div>
     </div>
   </div>
 
@@ -33,6 +53,10 @@
         <input type="text" id="sidebarTitle" class="sidebar-title" value="我的账本" maxlength="10"
                placeholder="点击更改名称"
                onblur="saveSidebarTitle()" onkeydown="if(event.key==='Enter')this.blur()">
+      </div>
+      <div class="sidebar-user-info" id="sidebarUserInfo">
+        <span class="sidebar-user-icon">👤</span>
+        <span class="sidebar-user-name" id="sidebarUserName"></span>
       </div>
       <ul class="sidebar-nav">
         <li class="nav-item active" data-page="home" onclick="switchPage('home')">
@@ -54,6 +78,7 @@
         <button class="dandelion-theme-btn" data-theme="yellow" onclick="switchDandelionTheme('yellow')">🌼 浅黄</button>
       </div>
       <div class="sidebar-footer">
+        <button class="footer-btn" onclick="switchAccount()" title="切换账户">🔄</button>
         <button class="footer-btn" onclick="exportAll()" title="导出数据">📤</button>
         <button class="footer-btn" onclick="openChangePwdModal()" title="修改密码">🔑</button>
       </div>

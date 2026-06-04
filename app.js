@@ -1,20 +1,23 @@
 // ================================================================
-//  我的账本 - 核心逻辑 v3
-//  功能：6位密码登录 | 日/月限额超限震动警告
+//  我的账本 - 核心逻辑 v4
+//  功能：多账户系统 | 6位密码登录 | 日/月限额超限震动警告
 //        按月折叠流水 | 缤纷图表 | 日志独立密码 | LocalStorage
 // ================================================================
 
-// ============ 存储键 ============
+// ============ 存储键（全局/账户数据分离） ============
 var SK = {
-  RECORDS: 'ledger_records',
-  DIARIES: 'ledger_diaries',
-  TITLE: 'ledger_title',
-  THEME: 'ledger_theme',
-  LOGIN_PWD: 'ledger_login_pwd',
-  DIARY_PWD: 'ledger_diary_pwd',
-  DAILY_LIMIT: 'ledger_daily_limit',
-  MONTHLY_LIMIT: 'ledger_monthly_limit'
+  ACCOUNTS: 'ledger_accounts',       // 所有账户信息（用户名+密码哈希）
+  CURRENT_USER: 'ledger_current_user' // 当前登录的用户名
 };
+
+// 账户相关数据的key由用户名拼接
+function userKey(username, field) {
+  return 'ledger_' + username + '_' + field;
+}
+
+// 全局账户列表
+var accountList = {};   // { 用户名: { passwordHash, createdAt } }
+var currentUser = null; // 当前登录用户名
 
 // ============ 类别定义 ============
 var EXPENSE_CATS = [
@@ -52,6 +55,29 @@ var EXPENSE_COLORS = [
   '#C9CBCF','#A5A5A5'
 ];
 
+// ============ 简单密码哈希 ============
+function hashPwd(pwd) {
+  // 简单哈希，用于本地存储（非安全用途，仅避免明文）
+  var h = 0;
+  for (var i = 0; i < pwd.length; i++) {
+    h = ((h << 5) - h) + pwd.charCodeAt(i);
+    h |= 0;
+  }
+  return 'h_' + Math.abs(h).toString(36);
+}
+
+// ============ 账户管理 ============
+function loadAccounts() {
+  try { accountList = JSON.parse(localStorage.getItem(SK.ACCOUNTS)) || {}; } catch(e) { accountList = {}; }
+}
+function saveAccounts() {
+  localStorage.setItem(SK.ACCOUNTS, JSON.stringify(accountList));
+}
+
+function getAccountUsernames() {
+  return Object.keys(accountList).sort();
+}
+
 // ============ 全局状态 ============
 var records = [];
 var diaries = [];
@@ -59,20 +85,47 @@ var currentType = 'expense';
 var currentCategory = null;
 var currentPageName = 'home';
 var currentSortR = 'desc';
-var loginPassword = null; // 登录密码（6位）
-var diaryPassword = null; // 日志密码（4位）
+var loginPassword = null; // 当前用户的登录密码（6位）
+var diaryPassword = null; // 当前用户的日志密码（4位）
 
-// ============ 数据持久化 ============
+// ============ 数据持久化（按用户隔离） ============
 function loadData() {
-  try { records = JSON.parse(localStorage.getItem(SK.RECORDS)) || []; } catch(e) { records = []; }
-  try { diaries = JSON.parse(localStorage.getItem(SK.DIARIES)) || []; } catch(e) { diaries = []; }
+  if (!currentUser) return;
+  try { records = JSON.parse(localStorage.getItem(userKey(currentUser, 'records'))) || []; } catch(e) { records = []; }
+  try { diaries = JSON.parse(localStorage.getItem(userKey(currentUser, 'diaries'))) || []; } catch(e) { diaries = []; }
 }
-function saveRecords() { localStorage.setItem(SK.RECORDS, JSON.stringify(records)); }
-function saveDiaryData() { localStorage.setItem(SK.DIARIES, JSON.stringify(diaries)); }
-function getDailyLimit() { return parseFloat(localStorage.getItem(SK.DAILY_LIMIT)) || 0; }
-function setDailyLimit(v) { localStorage.setItem(SK.DAILY_LIMIT, v); }
-function getMonthlyLimit() { return parseFloat(localStorage.getItem(SK.MONTHLY_LIMIT)) || 0; }
-function setMonthlyLimit(v) { localStorage.setItem(SK.MONTHLY_LIMIT, v); }
+function saveRecords() {
+  if (!currentUser) return;
+  localStorage.setItem(userKey(currentUser, 'records'), JSON.stringify(records));
+}
+function saveDiaryData() {
+  if (!currentUser) return;
+  localStorage.setItem(userKey(currentUser, 'diaries'), JSON.stringify(diaries));
+}
+function getDailyLimit() {
+  if (!currentUser) return 0;
+  return parseFloat(localStorage.getItem(userKey(currentUser, 'daily_limit'))) || 0;
+}
+function setDailyLimit(v) {
+  if (!currentUser) return;
+  localStorage.setItem(userKey(currentUser, 'daily_limit'), v);
+}
+function getMonthlyLimit() {
+  if (!currentUser) return 0;
+  return parseFloat(localStorage.getItem(userKey(currentUser, 'monthly_limit'))) || 0;
+}
+function setMonthlyLimit(v) {
+  if (!currentUser) return;
+  localStorage.setItem(userKey(currentUser, 'monthly_limit'), v);
+}
+
+// ============ 用户专属存储读取 ============
+function getUserStore(username, field) {
+  return localStorage.getItem(userKey(username, field));
+}
+function setUserStore(username, field, val) {
+  localStorage.setItem(userKey(username, field), val);
+}
 
 // ============ 工具函数 ============
 function fmtMoney(v) { return '\u00A5' + (parseFloat(v) || 0).toFixed(2); }
@@ -112,20 +165,93 @@ function vibrateDevice(pattern) {
   }
 }
 
-// ============ 1. 登录密码系统 ============
+// ============ 1. 登录系统（多账户） ============
 function initLoginPassword() {
-  var saved = localStorage.getItem(SK.LOGIN_PWD);
-  if (!saved) {
-    // 首次使用：默认密码 123456
-    loginPassword = '123456';
-    localStorage.setItem(SK.LOGIN_PWD, loginPassword);
-  } else {
-    loginPassword = saved;
+  loadAccounts();
+  // 尝试恢复上次登录
+  var lastUser = localStorage.getItem(SK.CURRENT_USER);
+  if (lastUser && accountList[lastUser]) {
+    loginPassword = accountList[lastUser].passwordHash;
   }
+}
+
+// 渲染账户列表
+function renderAccountList() {
+  var list = document.getElementById('accountList');
+  var users = getAccountUsernames();
+  if (users.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px">暂无账户，请创建一个</p>';
+    return;
+  }
+  list.innerHTML = users.map(function(u) {
+    var info = accountList[u];
+    var date = info.createdAt ? info.createdAt.substring(0, 10) : '';
+    return '<div class="account-card" onclick="selectAccount(\'' + u + '\')">' +
+      '<span class="account-card-icon">👤</span>' +
+      '<div class="account-card-info">' +
+      '<span class="account-card-name">' + u + '</span>' +
+      '<span class="account-card-date">创建于 ' + date + '</span>' +
+      '</div>' +
+      '<span class="account-card-arrow">→</span></div>';
+  }).join('');
+}
+
+// 选择账户 → 进入密码输入
+var selectedAccount = null;
+function selectAccount(username) {
+  selectedAccount = username;
+  loginInput = '';
+  document.getElementById('loginStepAccount').style.display = 'none';
+  document.getElementById('loginStepPwd').style.display = 'block';
+  document.getElementById('loginTargetUser').textContent = '👤 ' + username + ' 请输入6位密码';
+  var dots = document.querySelectorAll('#loginDots .login-dot');
+  dots.forEach(function(d) { d.classList.remove('filled', 'error'); });
+  document.getElementById('loginError').textContent = '';
+  renderLoginKeypad();
+}
+
+// 返回账户列表
+function goBackToAccountList() {
+  selectedAccount = null;
+  loginInput = '';
+  document.getElementById('loginStepPwd').style.display = 'none';
+  document.getElementById('loginStepAccount').style.display = 'block';
+  document.getElementById('loginError').textContent = '';
+}
+
+// 显示创建账户表单
+function showCreateAccount() {
+  document.getElementById('createAccountForm').style.display = 'block';
+  document.getElementById('newAccountName').value = '';
+  document.getElementById('createAccountError').textContent = '';
+  setTimeout(function() { document.getElementById('newAccountName').focus(); }, 100);
+}
+
+function hideCreateAccount() {
+  document.getElementById('createAccountForm').style.display = 'none';
+  document.getElementById('createAccountError').textContent = '';
+}
+
+// 创建新账户（用户名 + 密码在登录时设置）
+function doCreateAccount() {
+  var name = document.getElementById('newAccountName').value.trim();
+  var errEl = document.getElementById('createAccountError');
+  if (!name) { errEl.textContent = '请输入用户名'; return; }
+  if (name.length > 10) { errEl.textContent = '用户名最多10个字符'; return; }
+  if (accountList[name]) { errEl.textContent = '该用户名已存在'; return; }
+  // 创建账户，初始密码123456
+  accountList[name] = { passwordHash: hashPwd('123456'), createdAt: new Date().toISOString() };
+  saveAccounts();
+  hideCreateAccount();
+  renderAccountList();
+  showToast('✅ 账户创建成功！初始密码：123456');
+  // 自动选中新账户
+  setTimeout(function() { selectAccount(name); }, 300);
 }
 
 function renderLoginKeypad() {
   var pad = document.getElementById('loginKeypad');
+  if (!pad) return;
   var nums = [1,2,3,4,5,6,7,8,9,'del',0,''];
   pad.innerHTML = nums.map(function(n) {
     if (n === '') return '<button class="keypad-btn empty"></button>';
@@ -155,17 +281,24 @@ function loginKeyPress(key) {
   errEl.textContent = '';
 
   if (loginInput.length === 6) {
-    // 延迟验证
     setTimeout(function() {
-      if (loginInput === loginPassword) {
+      var pwdHash = hashPwd(loginInput);
+      if (pwdHash === accountList[selectedAccount].passwordHash) {
         // 登录成功
+        currentUser = selectedAccount;
+        loginPassword = pwdHash;
+        localStorage.setItem(SK.CURRENT_USER, currentUser);
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appWrapper').style.display = 'flex';
         document.getElementById('fabBtn').style.display = 'flex';
-        showToast('✅ 登录成功，欢迎回来！');
+        // 加载当前用户密码
+        initCurrentUserPasswords();
+        // 更新侧边栏用户名
+        document.getElementById('sidebarUserName').textContent = currentUser;
+        document.getElementById('sidebarUserInfo').style.display = 'flex';
+        showToast('✅ 欢迎回来，' + currentUser + '！');
         initApp();
       } else {
-        // 密码错误
         loginInput = '';
         dots.forEach(function(d) { d.classList.add('error'); d.classList.remove('filled'); });
         errEl.textContent = '❌ 密码错误，请重新输入';
@@ -179,16 +312,57 @@ function loginKeyPress(key) {
   }
 }
 
+// 加载当前用户的密码
+function initCurrentUserPasswords() {
+  if (!currentUser) return;
+  var saved = getUserStore(currentUser, 'login_pwd');
+  if (!saved) {
+    loginPassword = hashPwd('123456');
+    setUserStore(currentUser, 'login_pwd', loginPassword);
+  } else {
+    loginPassword = saved;
+  }
+  var ds = getUserStore(currentUser, 'diary_pwd');
+  if (!ds) {
+    diaryPassword = '1234';
+    setUserStore(currentUser, 'diary_pwd', diaryPassword);
+  } else {
+    diaryPassword = ds;
+  }
+}
+
+// 切换账户
+function switchAccount() {
+  // 保存当前数据
+  saveRecords();
+  saveDiaryData();
+  currentUser = null;
+  records = [];
+  diaries = [];
+  selectedAccount = null;
+  loginInput = '';
+  document.getElementById('appWrapper').style.display = 'none';
+  document.getElementById('fabBtn').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginStepPwd').style.display = 'none';
+  document.getElementById('loginStepAccount').style.display = 'block';
+  document.getElementById('sidebarUserInfo').style.display = 'none';
+  loadAccounts();
+  renderAccountList();
+}
+
 // ============ 侧栏标题 ============
 function saveSidebarTitle() {
+  if (!currentUser) return;
   var v = document.getElementById('sidebarTitle').value.trim();
   if (v) {
-    localStorage.setItem(SK.TITLE, v);
+    setUserStore(currentUser, 'title', v);
     document.getElementById('headerTitle').textContent = v;
   }
 }
 function loadSidebarTitle() {
-  var s = localStorage.getItem(SK.TITLE) || '我的账本';
+  if (!currentUser) return;
+  var s = getUserStore(currentUser, 'title') || '我的账本';
   document.getElementById('sidebarTitle').value = s;
   document.getElementById('headerTitle').textContent = s;
 }
@@ -267,14 +441,13 @@ function switchDandelionTheme(theme) {
     showToast('🌼 浅黄蒲公英主题');
   }
 
-  localStorage.setItem(SK.THEME, theme);
+  if (currentUser) setUserStore(currentUser, 'theme', theme);
   // 重新渲染图表以更新主题配色
   if (currentPageName === 'charts') renderCharts();
 }
 
 function loadDandelionTheme() {
-  var saved = localStorage.getItem(SK.THEME) || 'pink';
-  // 先确保cyber lines状态正确
+  var saved = (currentUser ? getUserStore(currentUser, 'theme') : null) || 'pink';
   var cyberLines = document.getElementById('dandelionCyberLines');
   if (saved === 'pink' && cyberLines) cyberLines.style.display = 'block';
   switchDandelionTheme(saved);
@@ -349,7 +522,7 @@ function changeLoginPwdKeyPress(key) {
 
   if (changePwdTempOld.length === 6) {
     setTimeout(function() {
-      if (changePwdTempOld === loginPassword) {
+      if (hashPwd(changePwdTempOld) === loginPassword) {
         // 旧密码正确 → 输入新密码
         changePwdStep = 'login_new';
         changePwdTempNew = '';
@@ -396,8 +569,10 @@ function changeLoginNewKeyPress(key) {
 
   if (changePwdTempNew.length === 6) {
     setTimeout(function() {
-      loginPassword = changePwdTempNew;
-      localStorage.setItem(SK.LOGIN_PWD, loginPassword);
+      loginPassword = hashPwd(changePwdTempNew);
+      accountList[currentUser].passwordHash = loginPassword;
+      saveAccounts();
+      setUserStore(currentUser, 'login_pwd', loginPassword);
       closeModal('changePwdModal');
       showToast('✅ 登录密码已更新');
     }, 200);
@@ -484,7 +659,7 @@ function changeDiaryNewKeyPress(key) {
   if (changePwdTempNew.length === 4) {
     setTimeout(function() {
       diaryPassword = changePwdTempNew;
-      localStorage.setItem(SK.DIARY_PWD, diaryPassword);
+      setUserStore(currentUser, 'diary_pwd', diaryPassword);
       closeModal('changePwdModal');
       showToast('✅ 日志密码已更新');
     }, 150);
@@ -1032,16 +1207,6 @@ function renderCharts() {
 }
 
 // ============ 日志系统（含4位独立密码） ============
-function initDiaryPassword() {
-  var saved = localStorage.getItem(SK.DIARY_PWD);
-  if (!saved) {
-    diaryPassword = '1234';
-    localStorage.setItem(SK.DIARY_PWD, diaryPassword);
-  } else {
-    diaryPassword = saved;
-  }
-}
-
 function renderDiaryPage() {
   var today = getToday();
   var wd = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
@@ -1237,6 +1402,9 @@ function initApp() {
   renderCatGrid();
   populateChartMonth();
   renderTodaySummary();
+  // 显示当前用户
+  document.getElementById('sidebarUserName').textContent = currentUser;
+  document.getElementById('sidebarUserInfo').style.display = 'flex';
 }
 
 // ============ 超限顶部横幅 ============
@@ -1286,10 +1454,11 @@ function renderDiaryMonthSummary() {
 }
 
 // ============ 启动 ============
-// 初始化密码
+// 初始化账户系统
 initLoginPassword();
-initDiaryPassword();
-// 渲染登录键盘
-renderLoginKeypad();
+// 渲染账户列表
+renderAccountList();
 // 显示登录页
 document.getElementById('loginOverlay').style.display = 'flex';
+// 隐藏侧边栏用户信息
+document.getElementById('sidebarUserInfo').style.display = 'none';
