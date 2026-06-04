@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的账本</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ========== 登录密码页 ========== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-icon">🔒</div>
+      <h2 class="login-title">欢迎使用我的账本</h2>
+      <p class="login-sub">请输入6位数字密码</p>
+      <div class="login-dots" id="loginDots">
+        <span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>
+        <span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>
+      </div>
+      <p class="login-error" id="loginError"></p>
+      <div class="login-keypad" id="loginKeypad"></div>
+    </div>
+  </div>
+
+  <!-- ========== 主容器：左右分栏 ========== -->
+  <div class="app-shell" id="appWrapper" style="display:none">
+
+    <!-- ========== 左侧橙色导航栏 ========== -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">📒</div>
+        <input type="text" id="sidebarTitle" class="sidebar-title" value="我的账本" maxlength="10"
+               placeholder="点击更改名称"
+               onblur="saveSidebarTitle()" onkeydown="if(event.key==='Enter')this.blur()">
+      </div>
+      <ul class="sidebar-nav">
+        <li class="nav-item active" data-page="home" onclick="switchPage('home')">
+          <span class="nav-icon">💰</span><span class="nav-label">记账</span>
+        </li>
+        <li class="nav-item" data-page="records" onclick="switchPage('records')">
+          <span class="nav-icon">📋</span><span class="nav-label">流水</span>
+        </li>
+        <li class="nav-item" data-page="charts" onclick="switchPage('charts')">
+          <span class="nav-icon">📊</span><span class="nav-label">分析</span>
+        </li>
+        <li class="nav-item" data-page="diary" onclick="switchPage('diary')">
+          <span class="nav-icon">📝</span><span class="nav-label">日志</span>
+        </li>
+      </ul>
+      <div class="sidebar-theme-bar" id="dandelionThemeBar">
+        <button class="dandelion-theme-btn active" data-theme="pink" onclick="switchDandelionTheme('pink')">🌸 玫红</button>
+        <button class="dandelion-theme-btn" data-theme="blue" onclick="switchDandelionTheme('blue')">🩵 浅蓝</button>
+        <button class="dandelion-theme-btn" data-theme="yellow" onclick="switchDandelionTheme('yellow')">🌼 浅黄</button>
+      </div>
+      <div class="sidebar-footer">
+        <button class="footer-btn" onclick="exportAll()" title="导出数据">📤</button>
+        <button class="footer-btn" onclick="openChangePwdModal()" title="修改密码">🔑</button>
+      </div>
+    </nav>
+
+    <!-- ========== 右侧主内容区 ========== -->
+    <main class="main-content" id="mainContent">
+
+      <!-- 超限顶部横幅 -->
+      <div class="overlimit-banner" id="overlimitBanner" style="display:none">
+        <span class="overlimit-banner-icon">⚠️</span>
+        <span class="overlimit-banner-text" id="overlimitBannerText"></span>
+        <button class="overlimit-banner-close" onclick="dismissOverlimitBanner()">✕</button>
+      </div>
+
+      <!-- ========== 页面1：记账首页 ========== -->
+      <section class="page active" id="page-home">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title" id="headerTitle">我的账本</h1>
+        </header>
+        <div class="page-body">
+          <!-- 卡片区：今日支出 + 今日限额 + 月度限额 -->
+          <div class="info-cards three-cards">
+            <div class="info-card expense-card">
+              <div class="info-card-icon">💸</div>
+              <div class="info-card-body">
+                <span class="info-card-label">今日支出</span>
+                <span class="info-card-value expense" id="todayExpense">¥0.00</span>
+              </div>
+              <span class="info-card-badge" id="todayCount">0笔</span>
+            </div>
+            <div class="info-card limit-card" onclick="openLimitModal()">
+              <div class="info-card-icon">🎯</div>
+              <div class="info-card-body">
+                <span class="info-card-label">今日限额</span>
+                <span class="info-card-value" id="dailyLimitDisplay">未配置</span>
+              </div>
+              <div class="limit-progress-wrap">
+                <div class="limit-progress-bar"><div class="limit-progress-fill" id="dailyLimitFill"></div></div>
+                <span class="limit-remain" id="dailyLimitRemain"></span>
+              </div>
+            </div>
+            <div class="info-card limit-card" onclick="openMonthlyLimitModal()">
+              <div class="info-card-icon">📊</div>
+              <div class="info-card-body">
+                <span class="info-card-label">月度限额</span>
+                <span class="info-card-value" id="monthlyLimitDisplay">未配置</span>
+              </div>
+              <div class="limit-progress-wrap">
+                <div class="limit-progress-bar"><div class="limit-progress-fill" id="monthlyLimitFill"></div></div>
+                <span class="limit-remain" id="monthlyLimitRemain"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 蒲公英主题装饰 -->
+          <div class="dandelion-area" id="dandelionArea">
+            <div class="dandelion-flower" id="dandelionFlower">🌼</div>
+            <div class="dandelion-stem"></div>
+            <div class="dandelion-leaves"></div>
+            <div class="dandelion-cyber-lines" id="dandelionCyberLines"></div>
+          </div>
+
+          <!-- 快速记账 -->
+          <div class="quick-add-card">
+            <div class="quick-add-header">
+              <h2>⚡ 快速记账</h2>
+              <span class="date-pick">📆 <input type="date" id="recordDate" class="date-input"></span>
+            </div>
+            <div class="type-switch">
+              <button class="type-btn active" data-type="expense" onclick="setType('expense')">💸 支出</button>
+              <button class="type-btn" data-type="income" onclick="setType('income')">💰 收入</button>
+            </div>
+            <div class="cat-grid" id="catGrid"></div>
+            <div class="amount-area" id="amountArea" style="display:none">
+              <span class="selected-cat" id="selCat"></span>
+              <input type="number" id="amountInput" class="amount-input" placeholder="输入金额" step="0.01" min="0.01">
+              <input type="text" id="noteInput" class="note-input" placeholder="添加备注..." maxlength="50">
+              <div class="amount-btns">
+                <button class="btn-cancel" onclick="cancelAdd()">取消</button>
+                <button class="btn-save" onclick="confirmAdd()">✓ 记账</button>
+              </div>
+            </div>
+            <div class="quick-amounts" id="quickAmounts" style="display:none">
+              <span>快捷：</span>
+              <button onclick="setAmount(3)">¥3</button><button onclick="setAmount(5)">¥5</button>
+              <button onclick="setAmount(8)">¥8</button><button onclick="setAmount(12)">¥12</button>
+              <button onclick="setAmount(15)">¥15</button><button onclick="setAmount(20)">¥20</button>
+              <button onclick="setAmount(50)">¥50</button><button onclick="setAmount(100)">¥100</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 页面2：流水（按月折叠） ========== -->
+      <section class="page" id="page-records">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title">📋 流水记录</h1>
+        </header>
+        <div class="page-body">
+          <div class="filter-bar">
+            <select id="filterTypeR" onchange="renderMonthFold()">
+              <option value="all">全部类型</option><option value="expense">💸 支出</option><option value="income">💰 收入</option>
+            </select>
+            <button id="sortBtnR" onclick="toggleSortR()">🔽 最新</button>
+          </div>
+          <div class="period-summary" id="periodSummary"></div>
+          <div class="month-fold-list" id="monthFoldList">
+            <div class="empty-state">📭 暂无记录，快去记一笔吧~</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 页面3：分析 ========== -->
+      <section class="page" id="page-charts">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title">📊 数据分析</h1>
+        </header>
+        <div class="page-body">
+          <div class="chart-controls">
+            <select id="chartMonth" onchange="renderCharts()"></select>
+          </div>
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><span class="stat-val" id="statExpense">¥0</span><span class="stat-lbl">总支出</span></div>
+            <div class="stat-card"><span class="stat-val income" id="statIncome">¥0</span><span class="stat-lbl">总收入</span></div>
+            <div class="stat-card"><span class="stat-val" id="statBalance">¥0</span><span class="stat-lbl">结余</span></div>
+            <div class="stat-card"><span class="stat-val" id="statAvg">¥0</span><span class="stat-lbl">日均支出</span></div>
+          </div>
+          <div class="chart-card"><h3>🍩 缤纷消费占比</h3><div class="chart-wrap"><canvas id="pieChart"></canvas></div></div>
+          <div class="chart-card"><h3>📈 每日收支趋势</h3><div class="chart-wrap"><canvas id="lineChart"></canvas></div></div>
+          <div class="chart-card"><h3>📊 各类别金额排行</h3><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- ========== 页面4：日志（点击日期需密码） ========== -->
+      <section class="page" id="page-diary">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title">📝 心情日志</h1>
+        </header>
+        <div class="page-body">
+          <div class="card diary-card">
+            <h3>📝 今日心情日志</h3>
+            <p class="diary-date" id="diaryDate"></p>
+            <div class="mood-picker" id="moodPicker">
+              <button class="mood-btn" data-mood="😄">😄</button><button class="mood-btn" data-mood="😊">😊</button>
+              <button class="mood-btn" data-mood="😐">😐</button><button class="mood-btn" data-mood="😔">😔</button>
+              <button class="mood-btn" data-mood="😤">😤</button><button class="mood-btn" data-mood="🥰">🥰</button>
+            </div>
+            <textarea class="diary-textarea" id="diaryContent" placeholder="记录今天的心情和感受..." maxlength="500"></textarea>
+            <button class="btn-save btn-full" onclick="saveDiary()">💾 保存日志</button>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:12px">📖 历史日志（点击日期查看）</h3>
+            <div class="diary-month-summary" id="diaryMonthSummary"></div>
+            <div class="diary-list" id="diaryList">
+              <div class="empty-state">📭 还没有写过日志哦~</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========== 弹窗：限额设置 ========== -->
+  <div class="modal-overlay" id="limitModal">
+    <div class="modal">
+      <div class="modal-header"><h3>🎯 每日限额设置</h3><button class="modal-close" onclick="closeModal('limitModal')">✕</button></div>
+      <div class="modal-body">
+        <label>每日支出上限（元）</label>
+        <input type="number" id="dailyLimitInput" class="modal-input" placeholder="例如：50" step="0.01" min="0">
+        <button class="btn-save btn-full" onclick="saveDailyLimit()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：月度限额 ========== -->
+  <div class="modal-overlay" id="monthlyLimitModal">
+    <div class="modal">
+      <div class="modal-header"><h3>📊 月度限额设置</h3><button class="modal-close" onclick="closeModal('monthlyLimitModal')">✕</button></div>
+      <div class="modal-body">
+        <label>月度支出上限（元）</label>
+        <input type="number" id="monthlyLimitInput" class="modal-input" placeholder="例如：2000" step="0.01" min="0">
+        <button class="btn-save btn-full" onclick="saveMonthlyLimit()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：日志密码验证 ========== -->
+  <div class="modal-overlay" id="diaryPwdModal">
+    <div class="modal">
+      <div class="modal-header"><h3>🔐 日志密码验证</h3><button class="modal-close" onclick="closeModal('diaryPwdModal')">✕</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-secondary);text-align:center">请输入4位密码查看 <b id="diaryPwdDate"></b> 的日志</p>
+        <div class="pwd-dots" id="diaryPwdDots">
+          <span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span>
+        </div>
+        <p class="login-error" id="diaryPwdError"></p>
+        <div class="login-keypad" id="diaryPwdKeypad"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：日志内容查看 ========== -->
+  <div class="modal-overlay" id="diaryViewModal">
+    <div class="modal">
+      <div class="modal-header"><h3>📖 日志详情</h3><button class="modal-close" onclick="closeModal('diaryViewModal')">✕</button></div>
+      <div class="modal-body" id="diaryViewContent"></div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：修改密码 ========== -->
+  <div class="modal-overlay" id="changePwdModal">
+    <div class="modal">
+      <div class="modal-header"><h3>🔑 修改密码</h3><button class="modal-close" onclick="closeModal('changePwdModal')">✕</button></div>
+      <div class="modal-body" id="changePwdBody"></div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：超限警告 ========== -->
+  <div class="modal-overlay" id="overLimitModal">
+    <div class="modal overlimit-modal">
+      <div class="modal-header" style="border-bottom-color:#fdecea">
+        <h3 style="color:#e74c3c">⚠️ 消费超限警告</h3>
+        <button class="modal-close" onclick="closeModal('overLimitModal')">✕</button>
+      </div>
+      <div class="modal-body" id="overLimitContent"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- FAB -->
+  <button class="fab" id="fabBtn" style="display:none" onclick="scrollToAdd()">＋</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+          onload="window._chartReady=true"
+          onerror="console.warn('Chart.js CDN 加载失败');window._chartReady=false;">
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
