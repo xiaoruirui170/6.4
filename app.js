@@ -94,14 +94,10 @@ async function loadAccounts() {
   }
 }
 
-// 保存账户到云端
+// 保存账户到云端（使用 upsert，不删除旧数据）
 async function saveAccounts() {
   try {
     var usernames = Object.keys(accountList);
-    // 先删除旧数据再重新插入（简化处理）
-    if (usernames.length > 0) {
-      await sb.from('accounts').delete().neq('username', '__none__');
-    }
     var rows = usernames.map(function(u) {
       return {
         username: u,
@@ -110,7 +106,7 @@ async function saveAccounts() {
       };
     });
     if (rows.length > 0) {
-      var { error } = await sb.from('accounts').insert(rows);
+      var { error } = await sb.from('accounts').upsert(rows, { onConflict: 'username' });
       if (error) throw error;
     }
     localStorage.setItem('ledger_accounts', JSON.stringify(accountList));
@@ -143,27 +139,76 @@ async function loadUserData() {
 async function syncUserDataFromCloud() {
   if (!currentUser) return;
   try {
+    // ===== 智能合并记录：云端+本地取并集，按 createdAt 去重 =====
     var { data: recData, error: recErr } = await sb.from('records').select('*').eq('username', currentUser).order('created_at', { ascending: false });
+    var cloudRecords = [];
     if (!recErr && recData && recData.length > 0) {
-      var cloudRecords = recData.map(function(r) { return r.data; });
-      // 云端数据更新本地
-      records = cloudRecords;
+      cloudRecords = recData.map(function(r) { return r.data; });
+    }
+
+    // 合并：用 id 去重，优先保留 createdAt 更晚的版本
+    var mergedMap = {};
+    // 先放本地
+    records.forEach(function(r) {
+      if (r && r.id) mergedMap[r.id] = r;
+    });
+    // 再放云端（覆盖同 id 的旧版本）
+    cloudRecords.forEach(function(r) {
+      if (r && r.id) {
+        var local = mergedMap[r.id];
+        if (!local || (r.updatedAt && local.updatedAt && r.updatedAt > local.updatedAt) || !local.updatedAt) {
+          mergedMap[r.id] = r;
+        }
+      }
+    });
+    var merged = Object.values(mergedMap);
+    merged.sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+
+    if (merged.length !== records.length || cloudRecords.length > 0) {
+      records = merged;
       localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
-    } else if (records.length > 0) {
+      // 如果云端数据比本地少，把本地多的同步上去
+      if (merged.length > cloudRecords.length) {
+        await saveRecordsToCloud();
+      }
+    } else if (records.length > 0 && cloudRecords.length === 0) {
       // 本地有数据但云端没有，迁移到云端
       await saveRecordsToCloud();
     }
 
+    // ===== 智能合并日记 =====
     var { data: diaryData, error: diaryErr } = await sb.from('diaries').select('*').eq('username', currentUser).order('created_at', { ascending: false });
+    var cloudDiaries = [];
     if (!diaryErr && diaryData && diaryData.length > 0) {
-      var cloudDiaries = diaryData.map(function(d) { return d.data; });
-      diaries = cloudDiaries;
+      cloudDiaries = diaryData.map(function(d) { return d.data; });
+    }
+
+    var diaryMap = {};
+    diaries.forEach(function(d) {
+      if (d && d.date) diaryMap[d.date] = d;
+    });
+    cloudDiaries.forEach(function(d) {
+      if (d && d.date) {
+        var local = diaryMap[d.date];
+        if (!local || (d.updatedAt && local.updatedAt && d.updatedAt > local.updatedAt) || !local.updatedAt) {
+          diaryMap[d.date] = d;
+        }
+      }
+    });
+    var mergedDiaries = Object.values(diaryMap);
+    mergedDiaries.sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+
+    if (mergedDiaries.length !== diaries.length || cloudDiaries.length > 0) {
+      diaries = mergedDiaries;
       localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
-    } else if (diaries.length > 0) {
+      if (mergedDiaries.length > cloudDiaries.length) {
+        await saveDiaryDataToCloud();
+      }
+    } else if (diaries.length > 0 && cloudDiaries.length === 0) {
       await saveDiaryDataToCloud();
     }
 
-    // 同步设置
+    // ===== 同步设置（云端优先） =====
     var { data: setData } = await sb.from('user_settings').select('*').eq('username', currentUser);
     if (setData && setData.length > 0) {
       var settings = {};
@@ -171,7 +216,7 @@ async function syncUserDataFromCloud() {
       localStorage.setItem('ledger_' + currentUser + '_settings', JSON.stringify(settings));
     }
 
-    // 同步后刷新页面
+    // 同步后刷新页面（避免频繁全量刷新，只刷新当前页）
     if (currentPageName === 'records') renderMonthFold();
     if (currentPageName === 'diary') renderDiaryPage();
     if (currentPageName === 'home') renderTodaySummary();
@@ -181,22 +226,19 @@ async function syncUserDataFromCloud() {
   }
 }
 
-// 保存记录到云端（使用 upsert 模式，不会先删除旧数据）
+// 保存记录到云端（使用 upsert，不会先删除旧数据）
 async function saveRecordsToCloud() {
   if (!currentUser) return;
   // 始终先保存本地缓存
   localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
   try {
-    // 先删除旧记录
-    await sb.from('records').delete().eq('username', currentUser);
-    // 批量插入
     var rows = records.map(function(r) {
-      return { username: currentUser, record_id: r.id, data: r, created_at: r.createdAt };
+      return { username: currentUser, record_id: r.id, data: r, created_at: r.createdAt, updated_at: r.updatedAt || r.createdAt };
     });
     if (rows.length > 0) {
-      for (var i = 0; i < rows.length; i += 500) {
-        var batch = rows.slice(i, i + 500);
-        var { error } = await sb.from('records').insert(batch);
+      for (var i = 0; i < rows.length; i += 100) {
+        var batch = rows.slice(i, i + 100);
+        var { error } = await sb.from('records').upsert(batch, { onConflict: 'record_id' });
         if (error) throw error;
       }
     }
@@ -206,20 +248,19 @@ async function saveRecordsToCloud() {
   }
 }
 
-// 保存日记到云端（使用 upsert 模式，不会先删除旧数据）
+// 保存日记到云端（使用 upsert，不会先删除旧数据）
 async function saveDiaryDataToCloud() {
   if (!currentUser) return;
   // 始终先保存本地缓存
   localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
   try {
-    await sb.from('diaries').delete().eq('username', currentUser);
     var rows = diaries.map(function(d) {
-      return { username: currentUser, diary_date: d.date, data: d, created_at: d.createdAt };
+      return { username: currentUser, diary_date: d.date, data: d, created_at: d.createdAt, updated_at: d.updatedAt || d.createdAt };
     });
     if (rows.length > 0) {
-      for (var i = 0; i < rows.length; i += 500) {
-        var batch = rows.slice(i, i + 500);
-        var { error } = await sb.from('diaries').insert(batch);
+      for (var i = 0; i < rows.length; i += 100) {
+        var batch = rows.slice(i, i + 100);
+        var { error } = await sb.from('diaries').upsert(batch, { onConflict: 'diary_date' });
         if (error) throw error;
       }
     }
@@ -757,6 +798,8 @@ function changeLoginNewKeyPress(key) {
       await saveAccounts();
       setUserStore(currentUser, 'login_pwd', loginPassword);
       closeModal('changePwdModal');
+      // 密码已修改，隐藏默认密码提示
+      document.getElementById('defaultPwdTip').style.display = 'none';
       showToast('✅ 登录密码已更新');
     }, 200);
   }
@@ -960,6 +1003,7 @@ function confirmAdd() {
   var note = document.getElementById('noteInput').value.trim();
   var map = currentType === 'expense' ? EXPENSE_MAP : INCOME_MAP;
   var cat = map[currentCategory];
+  var now = new Date().toISOString();
   var record = {
     id: Date.now(),
     date: recordDate,
@@ -967,7 +1011,8 @@ function confirmAdd() {
     category: currentCategory,
     amount: amount,
     note: note,
-    createdAt: new Date().toISOString()
+    createdAt: now,
+    updatedAt: now
   };
   records.push(record);
   saveRecords();
