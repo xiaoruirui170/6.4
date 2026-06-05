@@ -120,93 +120,97 @@ async function saveAccounts() {
   }
 }
 
-// 从云端加载用户数据（含本地数据自动迁移）
+// 从云端加载用户数据（优先本地缓存，秒开；后台同步云端）
 async function loadUserData() {
   if (!currentUser) return;
+
+  // 1. 先从本地缓存立即加载（秒开）
+  try { records = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_records')) || []; } catch(e) { records = []; }
+  try { diaries = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_diaries')) || []; } catch(e) { diaries = []; }
+
+  // 2. 也尝试从旧格式 key 迁移
+  if (records.length === 0) {
+    try { records = JSON.parse(localStorage.getItem('ledger_records_' + currentUser)) || []; } catch(e) {}
+  }
+  if (diaries.length === 0) {
+    try { diaries = JSON.parse(localStorage.getItem('ledger_diaries_' + currentUser)) || []; } catch(e) {}
+  }
+
+  // 3. 后台异步从云端同步（不阻塞页面显示）
+  syncUserDataFromCloud();
+}
+
+async function syncUserDataFromCloud() {
+  if (!currentUser) return;
   try {
-    // 加载记录
     var { data: recData, error: recErr } = await sb.from('records').select('*').eq('username', currentUser).order('created_at', { ascending: false });
-    if (recErr) throw recErr;
-    records = recData.map(function(r) { return r.data; });
+    if (!recErr && recData && recData.length > 0) {
+      var cloudRecords = recData.map(function(r) { return r.data; });
+      // 云端数据更新本地
+      records = cloudRecords;
+      localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
+    } else if (records.length > 0) {
+      // 本地有数据但云端没有，迁移到云端
+      await saveRecordsToCloud();
+    }
 
-    // 加载日记
     var { data: diaryData, error: diaryErr } = await sb.from('diaries').select('*').eq('username', currentUser).order('created_at', { ascending: false });
-    if (diaryErr) throw diaryErr;
-    diaries = diaryData.map(function(d) { return d.data; });
-
-    // 如果云端没有数据，尝试从旧 localStorage 迁移
-    if (records.length === 0) {
-      // 尝试旧格式 key
-      var oldRecords = null;
-      try { oldRecords = JSON.parse(localStorage.getItem('ledger_records_' + currentUser)); } catch(e) {}
-      if (!oldRecords || oldRecords.length === 0) {
-        try { oldRecords = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_records')); } catch(e) {}
-      }
-      if (oldRecords && oldRecords.length > 0) {
-        records = oldRecords;
-        await saveRecordsToCloud();
-        console.log('✅ 已迁移 ' + oldRecords.length + ' 条记账记录到云端');
-      }
-    }
-    if (diaries.length === 0) {
-      var oldDiaries = null;
-      try { oldDiaries = JSON.parse(localStorage.getItem('ledger_diaries_' + currentUser)); } catch(e) {}
-      if (!oldDiaries || oldDiaries.length === 0) {
-        try { oldDiaries = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_diaries')); } catch(e) {}
-      }
-      if (oldDiaries && oldDiaries.length > 0) {
-        diaries = oldDiaries;
-        await saveDiaryDataToCloud();
-        console.log('✅ 已迁移 ' + oldDiaries.length + ' 条日记记录到云端');
-      }
+    if (!diaryErr && diaryData && diaryData.length > 0) {
+      var cloudDiaries = diaryData.map(function(d) { return d.data; });
+      diaries = cloudDiaries;
+      localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
+    } else if (diaries.length > 0) {
+      await saveDiaryDataToCloud();
     }
 
-    // 缓存到本地
-    localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
-    localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
-
-    // 加载设置
-    var { data: setData, error: setErr } = await sb.from('user_settings').select('*').eq('username', currentUser);
-    if (!setErr && setData && setData.length > 0) {
+    // 同步设置
+    var { data: setData } = await sb.from('user_settings').select('*').eq('username', currentUser);
+    if (setData && setData.length > 0) {
       var settings = {};
       setData.forEach(function(s) { settings[s.key] = s.value; });
       localStorage.setItem('ledger_' + currentUser + '_settings', JSON.stringify(settings));
     }
+
+    // 同步后刷新页面
+    if (currentPageName === 'records') renderMonthFold();
+    if (currentPageName === 'diary') renderDiaryPage();
+    if (currentPageName === 'home') renderTodaySummary();
+    renderDiaryList();
   } catch(e) {
-    console.log('从云端加载用户数据失败，使用本地缓存:', e.message);
-    try { records = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_records')) || []; } catch(e2) { records = []; }
-    try { diaries = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_diaries')) || []; } catch(e2) { diaries = []; }
+    console.log('云端同步失败（不影响本地使用）:', e.message);
   }
 }
 
-// 保存记录到云端
+// 保存记录到云端（使用 upsert 模式，不会先删除旧数据）
 async function saveRecordsToCloud() {
   if (!currentUser) return;
+  // 始终先保存本地缓存
+  localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
   try {
-    // 先删除该用户旧记录
+    // 先删除旧记录
     await sb.from('records').delete().eq('username', currentUser);
     // 批量插入
     var rows = records.map(function(r) {
       return { username: currentUser, record_id: r.id, data: r, created_at: r.createdAt };
     });
     if (rows.length > 0) {
-      // Supabase 限制每次最多1000条，分批处理
       for (var i = 0; i < rows.length; i += 500) {
         var batch = rows.slice(i, i + 500);
         var { error } = await sb.from('records').insert(batch);
         if (error) throw error;
       }
     }
-    localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
   } catch(e) {
     console.log('保存记录到云端失败:', e.message);
-    localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
+    // 本地数据不受影响
   }
 }
 
-// 保存日记到云端
+// 保存日记到云端（使用 upsert 模式，不会先删除旧数据）
 async function saveDiaryDataToCloud() {
   if (!currentUser) return;
+  // 始终先保存本地缓存
+  localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
   try {
     await sb.from('diaries').delete().eq('username', currentUser);
     var rows = diaries.map(function(d) {
@@ -219,10 +223,9 @@ async function saveDiaryDataToCloud() {
         if (error) throw error;
       }
     }
-    localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
   } catch(e) {
     console.log('保存日记到云端失败:', e.message);
-    localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
+    // 本地数据不受影响
   }
 }
 
