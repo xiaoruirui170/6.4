@@ -114,7 +114,7 @@ async function saveAccounts() {
   }
 }
 
-// 从云端加载用户数据
+// 从云端加载用户数据（含本地数据自动迁移）
 async function loadUserData() {
   if (!currentUser) return;
   try {
@@ -122,12 +122,41 @@ async function loadUserData() {
     var { data: recData, error: recErr } = await sb.from('records').select('*').eq('username', currentUser).order('created_at', { ascending: false });
     if (recErr) throw recErr;
     records = recData.map(function(r) { return r.data; });
-    localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
 
     // 加载日记
     var { data: diaryData, error: diaryErr } = await sb.from('diaries').select('*').eq('username', currentUser).order('created_at', { ascending: false });
     if (diaryErr) throw diaryErr;
     diaries = diaryData.map(function(d) { return d.data; });
+
+    // 如果云端没有数据，尝试从旧 localStorage 迁移
+    if (records.length === 0) {
+      // 尝试旧格式 key
+      var oldRecords = null;
+      try { oldRecords = JSON.parse(localStorage.getItem('ledger_records_' + currentUser)); } catch(e) {}
+      if (!oldRecords || oldRecords.length === 0) {
+        try { oldRecords = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_records')); } catch(e) {}
+      }
+      if (oldRecords && oldRecords.length > 0) {
+        records = oldRecords;
+        await saveRecordsToCloud();
+        console.log('✅ 已迁移 ' + oldRecords.length + ' 条记账记录到云端');
+      }
+    }
+    if (diaries.length === 0) {
+      var oldDiaries = null;
+      try { oldDiaries = JSON.parse(localStorage.getItem('ledger_diaries_' + currentUser)); } catch(e) {}
+      if (!oldDiaries || oldDiaries.length === 0) {
+        try { oldDiaries = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_diaries')); } catch(e) {}
+      }
+      if (oldDiaries && oldDiaries.length > 0) {
+        diaries = oldDiaries;
+        await saveDiaryDataToCloud();
+        console.log('✅ 已迁移 ' + oldDiaries.length + ' 条日记记录到云端');
+      }
+    }
+
+    // 缓存到本地
+    localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
     localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
 
     // 加载设置
