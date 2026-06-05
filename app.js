@@ -68,8 +68,12 @@ function hashPwd(pwd) {
 }
 
 // ============ Supabase 云端数据操作 ============
-// 从云端加载所有账户
+// 从云端加载所有账户（优先本地缓存，后台同步云端）
 async function loadAccounts() {
+  // 先从本地缓存立即加载，保证页面秒开
+  try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e) { accountList = {}; }
+
+  // 后台从云端同步
   try {
     var { data, error } = await sb.from('accounts').select('*');
     if (error) throw error;
@@ -80,11 +84,13 @@ async function loadAccounts() {
         createdAt: row.created_at
       };
     });
-    // 同步到本地作为缓存
     localStorage.setItem('ledger_accounts', JSON.stringify(accountList));
   } catch(e) {
     console.log('从云端加载账户失败，使用本地缓存:', e.message);
-    try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e2) { accountList = {}; }
+    // 如果本地缓存也没有，用刚才加载的
+    if (Object.keys(accountList).length === 0) {
+      try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e2) { accountList = {}; }
+    }
   }
 }
 
@@ -343,12 +349,22 @@ function vibrateDevice(pattern) {
 
 // ============ 1. 登录系统（多账户） ============
 async function initLoginPassword() {
-  showToast('🔄 正在连接云端...');
-  await loadAccounts();
+  // 先加载本地缓存，立即显示账户列表
+  try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e) { accountList = {}; }
   var lastUser = localStorage.getItem('ledger_current_user');
   if (lastUser && accountList[lastUser]) {
     loginPassword = accountList[lastUser].passwordHash;
   }
+  renderAccountList();
+
+  // 后台同步云端（不影响当前操作）
+  loadAccounts().then(function() {
+    var lastUser2 = localStorage.getItem('ledger_current_user');
+    if (lastUser2 && accountList[lastUser2]) {
+      loginPassword = accountList[lastUser2].passwordHash;
+    }
+    renderAccountList();
+  });
 }
 
 function renderAccountList() {
