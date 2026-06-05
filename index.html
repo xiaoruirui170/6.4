@@ -40,6 +40,8 @@
         <div class="login-keypad" id="loginKeypad"></div>
         <button class="btn-cancel btn-full" style="margin-top:8px" onclick="goBackToAccountList()">← 返回账户列表</button>
       </div>
+      <!-- 登录页底部提示 -->
+      <div class="login-footer-hint">💡 默认密码为 <b>123456</b></div>
     </div>
   </div>
 
@@ -315,6 +317,12 @@
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
+
+  <!-- 默认密码提示条（仅新用户显示） -->
+  <div class="default-pwd-tip" id="defaultPwdTip" style="display:none">
+    <span>💡 您的密码为默认密码 <b>123456</b>，建议尽快修改</span>
+    <button onclick="document.getElementById('defaultPwdTip').style.display='none'">✕</button>
+  </div>
 
   <!-- FAB -->
   <button class="fab" id="fabBtn" style="display:none" onclick="scrollToAdd()">＋</button>

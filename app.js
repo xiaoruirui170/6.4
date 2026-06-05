@@ -481,6 +481,12 @@ function loginKeyPress(key) {
         initCurrentUserPasswords();
         document.getElementById('sidebarUserName').textContent = currentUser;
         document.getElementById('sidebarUserInfo').style.display = 'flex';
+        // 检查是否为默认密码，显示/隐藏提示
+        if (pwdHash === hashPwd('123456')) {
+          document.getElementById('defaultPwdTip').style.display = 'flex';
+        } else {
+          document.getElementById('defaultPwdTip').style.display = 'none';
+        }
         showToast('✅ 欢迎回来，' + currentUser + '！');
         await loadUserData();
         initApp();

@@ -1423,3 +1423,62 @@ body.theme-pink .diary-summary-tag {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
   .info-cards.three-cards { grid-template-columns: 1fr; }
 }
+
+/* ========== 登录页底部提示 ========== */
+.login-footer-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.login-footer-hint b {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ========== 默认密码提示条（主界面底部） ========== */
+.default-pwd-tip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #fff3e8, #ffe8cc);
+  border-top: 2px solid var(--primary);
+  font-size: 13px;
+  color: var(--primary-dark);
+  animation: slideUp 0.3s ease;
+}
+.default-pwd-tip b {
+  color: var(--primary);
+  font-weight: 700;
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.default-pwd-tip button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.default-pwd-tip button:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--text);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
