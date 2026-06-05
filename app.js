@@ -21,24 +21,24 @@ var currentUser = null; // 当前登录用户名
 
 // ============ 类别定义 ============
 var EXPENSE_CATS = [
-  { id: 'breakfast', name: '早餐', icon: '🥐', color: '#FF6384' },
-  { id: 'lunch', name: '午餐', icon: '🍱', color: '#36A2EB' },
-  { id: 'dinner', name: '晚餐', icon: '🍲', color: '#FFCE56' },
-  { id: 'snacks', name: '零食', icon: '🍿', color: '#4BC0C0' },
-  { id: 'shopping', name: '购物', icon: '🛒', color: '#9966FF' },
-  { id: 'transport', name: '交通', icon: '🚌', color: '#FF9F40' },
-  { id: 'entertain', name: '娱乐', icon: '🎮', color: '#C9CBCF' },
-  { id: 'study', name: '学习', icon: '📚', color: '#7BC8A4' },
-  { id: 'phone', name: '话费', icon: '📱', color: '#E8C3B9' },
-  { id: 'medical', name: '医疗', icon: '💊', color: '#5B9BD5' },
-  { id: 'utilities', name: '水电', icon: '💡', color: '#ED7D31' },
+  { id: 'breakfast', name: '早餐', icon: '🥕', color: '#FF6384' },
+  { id: 'lunch', name: '午餐', icon: '🍄', color: '#36A2EB' },
+  { id: 'dinner', name: '晚餐', icon: '🍅', color: '#FFCE56' },
+  { id: 'snacks', name: '零食', icon: '🍖', color: '#4BC0C0' },
+  { id: 'shopping', name: '购物', icon: '🛅', color: '#9966FF' },
+  { id: 'transport', name: '交通', icon: '🚞', color: '#FF9F40' },
+  { id: 'entertain', name: '娱乐', icon: '🎃', color: '#C9CBCF' },
+  { id: 'study', name: '学习', icon: '📎', color: '#7BC8A4' },
+  { id: 'phone', name: '话费', icon: '📫', color: '#E8C3B9' },
+  { id: 'medical', name: '医疗', icon: '💪', color: '#5B9BD5' },
+  { id: 'utilities', name: '水电', icon: '💕', color: '#ED7D31' },
   { id: 'other', name: '其他', icon: '📦', color: '#A5A5A5' }
 ];
 
 var INCOME_CATS = [
-  { id: 'salary', name: '工资', icon: '💼', color: '#07c160' },
-  { id: 'allowance', name: '零花钱', icon: '🎁', color: '#1989fa' },
-  { id: 'parttime', name: '兼职', icon: '💻', color: '#ff6b6b' },
+  { id: 'salary', name: '工资', icon: '💰', color: '#07c160' },
+  { id: 'allowance', name: '零花钱', icon: '💰', color: '#1989fa' },
+  { id: 'parttime', name: '兼职', icon: '💰', color: '#ff6b6b' },
   { id: 'redpacket', name: '红包', icon: '🧧', color: '#e74c3c' },
   { id: 'refund', name: '退款', icon: '↩️', color: '#9b59b6' },
   { id: 'income_other', name: '其他', icon: '💰', color: '#f39c12' }
@@ -57,7 +57,6 @@ var EXPENSE_COLORS = [
 
 // ============ 简单密码哈希 ============
 function hashPwd(pwd) {
-  // 简单哈希，用于本地存储（非安全用途，仅避免明文）
   var h = 0;
   for (var i = 0; i < pwd.length; i++) {
     h = ((h << 5) - h) + pwd.charCodeAt(i);
@@ -85,8 +84,8 @@ var currentType = 'expense';
 var currentCategory = null;
 var currentPageName = 'home';
 var currentSortR = 'desc';
-var loginPassword = null; // 当前用户的登录密码（6位）
-var diaryPassword = null; // 当前用户的日志密码（4位）
+var loginPassword = null;
+var diaryPassword = null;
 
 // ============ 数据持久化（按用户隔离） ============
 function loadData() {
@@ -119,7 +118,6 @@ function setMonthlyLimit(v) {
   localStorage.setItem(userKey(currentUser, 'monthly_limit'), v);
 }
 
-// ============ 用户专属存储读取 ============
 function getUserStore(username, field) {
   return localStorage.getItem(userKey(username, field));
 }
@@ -158,7 +156,6 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ============ 设备震动 ============
 function vibrateDevice(pattern) {
   if (navigator.vibrate) {
     try { navigator.vibrate(pattern); } catch(e) {}
@@ -168,14 +165,12 @@ function vibrateDevice(pattern) {
 // ============ 1. 登录系统（多账户） ============
 function initLoginPassword() {
   loadAccounts();
-  // 尝试恢复上次登录
   var lastUser = localStorage.getItem(SK.CURRENT_USER);
   if (lastUser && accountList[lastUser]) {
     loginPassword = accountList[lastUser].passwordHash;
   }
 }
 
-// 渲染账户列表
 function renderAccountList() {
   var list = document.getElementById('accountList');
   var users = getAccountUsernames();
@@ -187,7 +182,7 @@ function renderAccountList() {
     var info = accountList[u];
     var date = info.createdAt ? info.createdAt.substring(0, 10) : '';
     return '<div class="account-card" onclick="selectAccount(\'' + u + '\')">' +
-      '<span class="account-card-icon">👤</span>' +
+      '<span class="account-card-icon">👁</span>' +
       '<div class="account-card-info">' +
       '<span class="account-card-name">' + u + '</span>' +
       '<span class="account-card-date">创建于 ' + date + '</span>' +
@@ -196,21 +191,19 @@ function renderAccountList() {
   }).join('');
 }
 
-// 选择账户 → 进入密码输入
 var selectedAccount = null;
 function selectAccount(username) {
   selectedAccount = username;
   loginInput = '';
   document.getElementById('loginStepAccount').style.display = 'none';
   document.getElementById('loginStepPwd').style.display = 'block';
-  document.getElementById('loginTargetUser').textContent = '👤 ' + username + ' 请输入6位密码';
+  document.getElementById('loginTargetUser').textContent = '👁 ' + username + ' 请输入6位密码';
   var dots = document.querySelectorAll('#loginDots .login-dot');
   dots.forEach(function(d) { d.classList.remove('filled', 'error'); });
   document.getElementById('loginError').textContent = '';
   renderLoginKeypad();
 }
 
-// 返回账户列表
 function goBackToAccountList() {
   selectedAccount = null;
   loginInput = '';
@@ -219,7 +212,6 @@ function goBackToAccountList() {
   document.getElementById('loginError').textContent = '';
 }
 
-// 显示创建账户表单
 function showCreateAccount() {
   document.getElementById('createAccountForm').style.display = 'block';
   document.getElementById('newAccountName').value = '';
@@ -232,20 +224,17 @@ function hideCreateAccount() {
   document.getElementById('createAccountError').textContent = '';
 }
 
-// 创建新账户（用户名 + 密码在登录时设置）
 function doCreateAccount() {
   var name = document.getElementById('newAccountName').value.trim();
   var errEl = document.getElementById('createAccountError');
   if (!name) { errEl.textContent = '请输入用户名'; return; }
-  if (name.length > 10) { errEl.textContent = '用户名最多10个字符'; return; }
+  if (name.length > 10) { errEl.textContent = '用户名最大10个字符'; return; }
   if (accountList[name]) { errEl.textContent = '该用户名已存在'; return; }
-  // 创建账户，初始密码123456
   accountList[name] = { passwordHash: hashPwd('123456'), createdAt: new Date().toISOString() };
   saveAccounts();
   hideCreateAccount();
   renderAccountList();
   showToast('✅ 账户创建成功！初始密码：123456');
-  // 自动选中新账户
   setTimeout(function() { selectAccount(name); }, 300);
 }
 
@@ -284,16 +273,13 @@ function loginKeyPress(key) {
     setTimeout(function() {
       var pwdHash = hashPwd(loginInput);
       if (pwdHash === accountList[selectedAccount].passwordHash) {
-        // 登录成功
         currentUser = selectedAccount;
         loginPassword = pwdHash;
         localStorage.setItem(SK.CURRENT_USER, currentUser);
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appWrapper').style.display = 'flex';
         document.getElementById('fabBtn').style.display = 'flex';
-        // 加载当前用户密码
         initCurrentUserPasswords();
-        // 更新侧边栏用户名
         document.getElementById('sidebarUserName').textContent = currentUser;
         document.getElementById('sidebarUserInfo').style.display = 'flex';
         showToast('✅ 欢迎回来，' + currentUser + '！');
@@ -312,7 +298,6 @@ function loginKeyPress(key) {
   }
 }
 
-// 加载当前用户的密码
 function initCurrentUserPasswords() {
   if (!currentUser) return;
   var saved = getUserStore(currentUser, 'login_pwd');
@@ -331,9 +316,7 @@ function initCurrentUserPasswords() {
   }
 }
 
-// 切换账户
 function switchAccount() {
-  // 保存当前数据
   saveRecords();
   saveDiaryData();
   currentUser = null;
@@ -400,15 +383,12 @@ function switchDandelionTheme(theme) {
   var flower = document.getElementById('dandelionFlower');
   var cyberLines = document.getElementById('dandelionCyberLines');
 
-  // 移除旧主题类
   document.body.classList.remove('theme-pink', 'theme-blue', 'theme-yellow');
 
-  // 更新主题按钮状态
   document.querySelectorAll('.dandelion-theme-btn').forEach(function(b) {
     b.classList.toggle('active', b.dataset.theme === theme);
   });
 
-  // 重置科技线条
   if (cyberLines) cyberLines.style.display = 'none';
 
   if (theme === 'pink') {
@@ -420,7 +400,7 @@ function switchDandelionTheme(theme) {
     root.style.setProperty('--dandelion-flower', '#e91e8c');
     if (flower) flower.textContent = '🌸';
     if (cyberLines) cyberLines.style.display = 'block';
-    showToast('🌸 赛博玫红·荧光绿 蒲公英主题');
+    showToast('🌸 玫红主题');
   } else if (theme === 'blue') {
     document.body.classList.add('theme-blue');
     root.style.setProperty('--dandelion-primary', '#5b9bd5');
@@ -428,8 +408,8 @@ function switchDandelionTheme(theme) {
     root.style.setProperty('--dandelion-light', '#e8f4fd');
     root.style.setProperty('--dandelion-bg', '#f0f8ff');
     root.style.setProperty('--dandelion-flower', '#5b9bd5');
-    if (flower) flower.textContent = '💠';
-    showToast('🩵 浅蓝蒲公英主题');
+    if (flower) flower.textContent = '🩵';
+    showToast('🩵 浅蓝主题');
   } else if (theme === 'yellow') {
     document.body.classList.add('theme-yellow');
     root.style.setProperty('--dandelion-primary', '#f0c040');
@@ -438,11 +418,10 @@ function switchDandelionTheme(theme) {
     root.style.setProperty('--dandelion-bg', '#fffef5');
     root.style.setProperty('--dandelion-flower', '#f0c040');
     if (flower) flower.textContent = '🌼';
-    showToast('🌼 浅黄蒲公英主题');
+    showToast('🌼 浅黄主题');
   }
 
   if (currentUser) setUserStore(currentUser, 'theme', theme);
-  // 重新渲染图表以更新主题配色
   if (currentPageName === 'charts') renderCharts();
 }
 
@@ -454,7 +433,7 @@ function loadDandelionTheme() {
 }
 
 // ============ 修改密码弹窗 ============
-var changePwdStep = 'menu'; // menu | login_old | login_new | diary_old | diary_new
+var changePwdStep = 'menu';
 var changePwdTempOld = '';
 var changePwdTempNew = '';
 
@@ -471,8 +450,8 @@ function renderChangePwdMenu() {
   body.innerHTML =
     '<p style="text-align:center;font-size:14px;margin-bottom:8px">请选择要修改的密码</p>' +
     '<div style="display:flex;gap:10px">' +
-    '<button class="btn-save" style="flex:1;background:#e91e8c" onclick="startChangeLoginPwd()">🔒 登录密码<br><small>6位数字</small></button>' +
-    '<button class="btn-save" style="flex:1;background:#5b9bd5" onclick="startChangeDiaryPwd()">📝 日志密码<br><small>4位数字</small></button>' +
+    '<button class="btn-save" style="flex:1;background:#e91e8c" onclick="startChangeLoginPwd()">🔐 登录密码<br><small>6位数字</small></button>' +
+    '<button class="btn-save" style="flex:1;background:#5b9bd5" onclick="startChangeDiaryPwd()">📑 日志密码<br><small>4位数字</small></button>' +
     '</div>';
 }
 
@@ -487,7 +466,6 @@ function renderChangePwdKeypad(elId, onPress) {
   }).join('');
 }
 
-// --- 修改登录密码流程 ---
 function startChangeLoginPwd() {
   changePwdStep = 'login_old';
   changePwdTempOld = '';
@@ -523,7 +501,6 @@ function changeLoginPwdKeyPress(key) {
   if (changePwdTempOld.length === 6) {
     setTimeout(function() {
       if (hashPwd(changePwdTempOld) === loginPassword) {
-        // 旧密码正确 → 输入新密码
         changePwdStep = 'login_new';
         changePwdTempNew = '';
         var body = document.getElementById('changePwdBody');
@@ -579,7 +556,6 @@ function changeLoginNewKeyPress(key) {
   }
 }
 
-// --- 修改日志密码流程 ---
 function startChangeDiaryPwd() {
   changePwdStep = 'diary_old';
   changePwdTempOld = '';
@@ -722,7 +698,6 @@ function checkOverLimit(amount, recordDate) {
   var currentMonth = getCurrentMonth();
   var warnings = [];
 
-  // 检查日限额
   var dl = getDailyLimit();
   if (dl > 0) {
     var todayExpense = records
@@ -739,7 +714,6 @@ function checkOverLimit(amount, recordDate) {
     }
   }
 
-  // 检查月限额
   var ml = getMonthlyLimit();
   if (ml > 0) {
     var monthExpense = records
@@ -757,7 +731,6 @@ function checkOverLimit(amount, recordDate) {
   }
 
   if (warnings.length > 0) {
-    // 顶部横幅提醒
     showOverlimitBanner(warnings);
 
     var content = warnings.map(function(w) {
@@ -771,8 +744,6 @@ function checkOverLimit(amount, recordDate) {
       '<button class="btn-save btn-full" style="background:#e74c3c" onclick="closeModal(\'overLimitModal\')">我知道了</button>';
 
     document.getElementById('overLimitModal').classList.add('show');
-
-    // 震动警告
     vibrateDevice([200, 100, 200, 100, 400]);
   }
 }
@@ -801,13 +772,11 @@ function confirmAdd() {
   var typeLabel = currentType === 'expense' ? '支出' : '收入';
   var dateLabel = recordDate !== getToday() ? '补录 ' + recordDate : '';
   cancelAdd();
-  // 收起键盘
   document.getElementById('amountInput').blur();
   document.getElementById('noteInput').blur();
-  showToast('✅ ' + dateLabel + ' ' + cat.icon + ' ' + cat.name + ' ' + typeLabel + ' ' + fmtMoney(amount) + (note ? ' 📝' + note : ''));
+  showToast('✅ ' + dateLabel + ' ' + cat.icon + ' ' + cat.name + ' ' + typeLabel + ' ' + fmtMoney(amount) + (note ? ' 📑' + note : ''));
   refreshAll();
 
-  // 超限检查
   if (currentType === 'expense') {
     setTimeout(function() { checkOverLimit(amount, recordDate); }, 300);
   }
@@ -833,14 +802,12 @@ function renderTodaySummary() {
   document.getElementById('todayExpense').textContent = fmtMoney(expenseTotal);
   document.getElementById('todayCount').textContent = expenseCount + '笔';
 
-  // 日限额
   var dl = getDailyLimit();
   var dd = document.getElementById('dailyLimitDisplay');
   var df = document.getElementById('dailyLimitFill');
   var dr = document.getElementById('dailyLimitRemain');
   renderLimit(dl, expenseTotal, dd, df, dr);
 
-  // 月限额
   var ml = getMonthlyLimit();
   var currentMonth = getCurrentMonth();
   var monthExpense = records
@@ -945,7 +912,6 @@ function renderMonthFold() {
     return;
   }
 
-  // 按月分组
   var monthGroups = {};
   filtered.forEach(function(r) {
     var mk = getMonthKey(r.date);
@@ -962,7 +928,6 @@ function renderMonthFold() {
     var mi = mRecords.filter(function(r) { return r.type === 'income'; }).reduce(function(s, r) { return s + r.amount; }, 0);
     var monthId = 'month-fold-' + mk.replace('-','');
 
-    // 按日期分组
     var dateGroups = {};
     mRecords.forEach(function(r) {
       if (!dateGroups[r.date]) dateGroups[r.date] = [];
@@ -996,7 +961,7 @@ function renderMonthFold() {
           '<span class="record-icon">' + cat.icon + '</span>' +
           '<div class="record-info"><div class="record-cat-row">' +
           '<span class="record-cat">' + cat.name + '</span>' +
-          (r.note ? '<span class="record-note-tag">📝 ' + r.note + '</span>' : '') +
+          (r.note ? '<span class="record-note-tag">📑 ' + r.note + '</span>' : '') +
           '</div></div>' +
           '<span class="record-amount ' + amtClass + '">' + sign + fmtMoney(r.amount) + '</span>' +
           '<button class="record-delete" onclick="deleteRecord(' + r.id + ')">🗑</button></div>';
@@ -1007,7 +972,7 @@ function renderMonthFold() {
 
     return '<div class="month-fold-item open" id="' + monthId + '">' +
       '<div class="month-fold-header" onclick="toggleMonthFold(\'' + monthId + '\')">' +
-      '<div class="month-fold-title">📅 ' + mk + '</div>' +
+      '<div class="month-fold-title">📮 ' + mk + '</div>' +
       '<div class="month-fold-summary">' +
       '<span class="mfs-expense">支出 ' + fmtMoney(me) + '</span>' +
       '<span class="mfs-income">收入 ' + fmtMoney(mi) + '</span>' +
@@ -1086,7 +1051,6 @@ function renderCharts() {
   if (sb) sb.textContent = fmtMoney(it - et);
   if (sa) sa.textContent = fmtMoney(avg);
 
-  // 缤纷饼图
   var catTotals = {};
   expenseRecords.forEach(function(r) { catTotals[r.category] = (catTotals[r.category] || 0) + r.amount; });
   var cl = Object.keys(catTotals);
@@ -1135,7 +1099,6 @@ function renderCharts() {
     });
   }
 
-  // 折线图
   var dateData = {};
   monthRecords.forEach(function(r) {
     if (!dateData[r.date]) dateData[r.date] = { expense: 0, income: 0 };
@@ -1169,7 +1132,6 @@ function renderCharts() {
     });
   }
 
-  // 柱状图 - 缤纷多色（赛博主题用玫红+荧光绿）
   if (cl.length > 0) {
     var isCyber3 = document.body.classList.contains('theme-pink');
     var barColors, barBorderColors;
@@ -1210,7 +1172,7 @@ function renderCharts() {
 function renderDiaryPage() {
   var today = getToday();
   var wd = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
-  document.getElementById('diaryDate').textContent = '📅 ' + today + ' ' + wd[new Date().getDay()];
+  document.getElementById('diaryDate').textContent = '📮 ' + today + ' ' + wd[new Date().getDay()];
 
   var todayDiary = diaries.find(function(d) { return d.date === today; });
   if (todayDiary) {
@@ -1244,17 +1206,18 @@ function renderDiaryList() {
   list.innerHTML = sorted.map(function(d) {
     return '<div class="diary-item" onclick="openDiaryWithPwd(\'' + d.date + '\')">' +
       '<div class="diary-item-header">' +
-      '<span class="diary-item-mood">' + (d.mood || '📝') + '</span>' +
-      '<span class="diary-item-date">📅 ' + d.date + ' 🔒</span>' +
+      '<span class="diary-item-mood">' + (d.mood || '📑') + '</span>' +
+      '<span class="diary-item-date">📮 ' + d.date + ' 🔐</span>' +
       '<button class="diary-item-delete" onclick="event.stopPropagation();deleteDiary(\'' + d.date + '\')">🗑 删除</button>' +
       '</div>' +
-      '<div class="diary-item-content">🔒 点击输入密码查看</div></div>';
+      '<div class="diary-item-content">🔐 点击输入密码查看</div></div>';
   }).join('');
 }
 
+// ====== 【核心修改】保存日志 + 自动清空输入框 ======
 function saveDiary() {
   var mb = document.querySelector('.mood-btn.selected');
-  var mood = mb ? mb.dataset.mood : '📝';
+  var mood = mb ? mb.dataset.mood : '📑';
   var content = document.getElementById('diaryContent').value.trim();
   var today = getToday();
   var idx = diaries.findIndex(function(d) { return d.date === today; });
@@ -1266,6 +1229,11 @@ function saveDiary() {
   }
   saveDiaryData();
   showToast('✅ 心情日志已保存');
+
+  // ✅ 关键：保存后自动清空输入框和已选表情
+  document.getElementById('diaryContent').value = '';
+  document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+
   renderDiaryList();
 }
 
@@ -1344,8 +1312,8 @@ function showDiaryContent(date) {
   var diary = diaries.find(function(d) { return d.date === date; });
   if (!diary) return;
   document.getElementById('diaryViewContent').innerHTML =
-    '<div class="diary-view-mood">' + (diary.mood || '📝') + '</div>' +
-    '<div class="diary-view-date">📅 ' + date + '</div>' +
+    '<div class="diary-view-mood">' + (diary.mood || '📑') + '</div>' +
+    '<div class="diary-view-date">📮 ' + date + '</div>' +
     '<div class="diary-view-text">' + (diary.content || '(无内容)') + '</div>';
   document.getElementById('diaryViewModal').classList.add('show');
 }
@@ -1366,7 +1334,7 @@ function exportAll() {
   var a = document.createElement('a');
   a.href = url; a.download = '我的账本_全部数据.csv'; a.click();
   URL.revokeObjectURL(url);
-  showToast('📥 导出成功');
+  showToast('📜 导出成功');
 }
 
 // ============ FAB ============
@@ -1402,7 +1370,6 @@ function initApp() {
   renderCatGrid();
   populateChartMonth();
   renderTodaySummary();
-  // 显示当前用户
   document.getElementById('sidebarUserName').textContent = currentUser;
   document.getElementById('sidebarUserInfo').style.display = 'flex';
 }
@@ -1417,7 +1384,6 @@ function showOverlimitBanner(warnings) {
   });
   text.textContent = msgs.join('；');
   banner.style.display = 'flex';
-  // 5秒后自动消失
   clearTimeout(banner._hideTid);
   banner._hideTid = setTimeout(function() {
     banner.style.display = 'none';
@@ -1444,7 +1410,7 @@ function renderDiaryMonthSummary() {
   container.style.display = 'block';
   var moodCounts = {};
   monthDiaries.forEach(function(d) {
-    var m = d.mood || '📝';
+    var m = d.mood || '📑';
     moodCounts[m] = (moodCounts[m] || 0) + 1;
   });
   var sorted = Object.keys(moodCounts).sort(function(a, b) { return moodCounts[b] - moodCounts[a]; });
@@ -1454,11 +1420,7 @@ function renderDiaryMonthSummary() {
 }
 
 // ============ 启动 ============
-// 初始化账户系统
 initLoginPassword();
-// 渲染账户列表
 renderAccountList();
-// 显示登录页
 document.getElementById('loginOverlay').style.display = 'flex';
-// 隐藏侧边栏用户信息
 document.getElementById('sidebarUserInfo').style.display = 'none';
