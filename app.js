@@ -1324,13 +1324,13 @@ function renderDiaryPage() {
   document.getElementById('diaryDate').textContent = '📮 ' + today + ' ' + wd[new Date().getDay()];
 
   var todayDiary = diaries.find(function(d) { return d.date === today; });
+  // 始终清空输入框和表情选择，已保存的内容显示在历史列表中
+  document.getElementById('diaryContent').value = '';
   if (todayDiary) {
-    document.getElementById('diaryContent').value = todayDiary.content || '';
     document.querySelectorAll('.mood-btn').forEach(function(b) {
       b.classList.toggle('selected', b.dataset.mood === todayDiary.mood);
     });
   } else {
-    document.getElementById('diaryContent').value = '';
     document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
   }
 
