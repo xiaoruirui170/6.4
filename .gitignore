@@ -1,0 +1,15 @@
+node_modules/
+.DS_Store
+*.log
+app.js
+app_modified.js
+app_fixed.js
+js_fixed.js
+styles.css
+styles_fixed.css
+css_fixed.css
+html_fixed.html
+index_original.html
+index_html_clean.html
+page_source.html
+page_fixed.html
