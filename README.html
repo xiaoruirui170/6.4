@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的账本 - 大数据技术期末项目报告</title>
+<style>
+:root {
+  --bg: #fff;
+  --text: #333;
+  --heading: #1a1a2e;
+  --accent: #e91e8c;
+  --border: #e0e0e0;
+  --code-bg: #f5f5f5;
+  --table-stripe: #fafafa;
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 40px 20px;
+  font-family: "Microsoft YaHei","PingFang SC",sans-serif;
+  color: var(--text);
+  line-height: 1.8;
+  background: var(--bg);
+}
+h1 { color: var(--heading); border-bottom: 3px solid var(--accent); padding-bottom: 10px; margin-top: 30px; }
+h2 { color: var(--heading); border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-top: 28px; }
+h3 { color: var(--accent); margin-top: 20px; }
+h4 { color: var(--heading); margin-top: 16px; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+th, td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; }
+th { background: var(--accent); color: #fff; font-weight: 600; }
+tr:nth-child(even) { background: var(--table-stripe); }
+code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-family: "Consolas","Courier New",monospace; font-size: 0.9em; }
+pre { background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 8px; overflow-x: auto; font-size: 0.85em; line-height: 1.6; }
+pre code { background: none; padding: 0; color: inherit; }
+strong { color: var(--heading); }
+ul, ol { padding-left: 24px; }
+li { margin: 6px 0; }
+blockquote { border-left: 4px solid var(--accent); margin: 12px 0; padding: 8px 16px; background: #fef5f9; }
+.header { text-align: center; padding: 30px 0; border-bottom: 2px solid var(--border); margin-bottom: 30px; }
+.header h1 { border: none; font-size: 2em; }
+.header p { color: #666; }
+.footer { text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid var(--border); color: #999; font-size: 0.85em; }
+@media print {
+  body { max-width: 100%; padding: 20px; }
+  h1,h2,h3 { page-break-after: avoid; }
+  pre,code { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>大数据技术期末项目报告</h1>
+<p>学生姓名：<strong>曾瑞</strong> &nbsp;|&nbsp; 学号：<strong>022340508</strong></p>
+<p>项目名称：我的账本 - 个人记账 Web 应用 &nbsp;|&nbsp; 类型：网页端项目 &nbsp;|&nbsp; 完成时间：2026年6月5日</p>
+</div>
+
+<h2>期末项目完整提交要素清单</h2>
+<ol>
+<li>✅ 完整项目源码：可直接运行的完整项目文件夹，包含所有页面、样式、脚本文件</li>
+<li>✅ 完整 README + 项目报告：全部模块内容完整填写</li>
+<li>✅ 项目运行说明：明确标注开发环境、工具版本、项目启动步骤</li>
+<li>✅ 项目运行截图：包含首页、核心功能、交互效果等实拍截图</li>
+<li>✅ 核心代码说明：选取项目重难点功能代码，搭配文字解析</li>
+<li>✅ 项目自查文档：明确项目完成度、已实现功能、不足与优化方向</li>
+</ol>
+
+<h2>项目工具、资源与附件清单</h2>
+<table>
+<tr><th>资源类别</th><th>实际使用内容</th><th>用途说明</th></tr>
+<tr><td>LLM 工具</td><td>CodeBuddy（内置 AI 助手）</td><td>辅助需求梳理、代码优化、Bug 排查、报告撰写</td></tr>
+<tr><td>IDE 开发工具</td><td>CodeBuddy IDE + VS Code</td><td>项目编写、代码调试、文件管理、语法检测</td></tr>
+<tr><td>GitHub 仓库</td><td>github.com/xiaoruirui170/6.4</td><td>项目版本管理、代码备份、迭代记录留存</td></tr>
+<tr><td>自定义 Website</td><td>xiaoruirui170.github.io/6.4/</td><td>项目在线访问地址</td></tr>
+<tr><td>云服务商</td><td>Supabase</td><td>云端数据库 + 用户认证服务</td></tr>
+<tr><td>程序包附件</td><td>源代码文件夹、README.md</td><td>源码包 + 项目介绍说明</td></tr>
+</table>
+
+<h2>摘要</h2>
+<p>本项目「我的账本」是一款基于 Web 的个人记账应用，采用纯 HTML+CSS+JavaScript 原生技术开发，通过 Supabase BaaS 平台提供云端数据库与用户认证服务。项目使用 Supabase Auth 实现邮箱密码注册登录，支持收支记账、数据可视化分析（Chart.js）、心情日志、日月限额管理等功能。采用本地优先（Local-First）数据策略，localStorage 缓存确保秒级响应，后台通过 Supabase REST API 异步同步到 PostgreSQL 云数据库，实现多设备数据一致。样式系统使用 CSS 变量配合 body.theme 类选择器实现三套主题换肤，含赛博朋克风格暗色主题。通过 Flexbox 响应式布局适配桌面端与移动端。</p>
+
+<hr>
+
+<h2>一、项目概述</h2>
+
+<h3>1.1 项目背景与意义</h3>
+<p>在日常学习生活中，个人记账是培养理财习惯、合理规划开支的重要方式。然而目前市面上的手机记账 App 普遍存在广告多、功能臃肿、隐私收集等问题，使用体验不佳。因此本项目选用「我的账本」这一轻量级、高隐私的纯 Web 记账应用，旨在替代传统手机记账工具，帮助用户便捷记录日常收支、分析消费结构。项目作为 Web 前端课程综合性大作业，涵盖完整的全栈开发流程，将 HTML/CSS/JavaScript 理论知识转化为实际工程能力，通过前端页面开发、数据处理可视化、云端数据库操作、响应式布局设计等核心知识点，具有较好的课程实践价值和综合训练意义。</p>
+
+<h3>1.2 项目开发目标</h3>
+<ul>
+<li><strong>基础目标：</strong>实现邮箱注册登录、12 类支出/6 类收入快速记账、按月流水明细查询、类别筛选和时间排序；三个数据可视化图表（Doughnut 环形图、Line 折线图、Bar 柱状图）；Emoji 心情日志及月度汇总统计。</li>
+<li><strong>进阶目标：</strong>日月额度限额与超限震动提醒；蒲公英主题三套配色切换；侧边栏标题可自定义编辑并云端持久化。</li>
+<li><strong>后期改进：</strong>解决 Supabase API 数据获取延迟问题、Chart.js 切换月份图表叠加需先调用 destroy()、异步顺序混乱最终改用 async/await 解决。</li>
+</ul>
+
+<h3>1.3 项目运行环境</h3>
+<table>
+<tr><th>环境类型</th><th>具体内容</th></tr>
+<tr><td>硬件环境</td><td>PC 或移动设备浏览器</td></tr>
+<tr><td>系统环境</td><td>Windows/macOS/Linux/iOS/Android（跨平台）</td></tr>
+<tr><td>开发工具</td><td>CodeBuddy IDE + VS Code</td></tr>
+<tr><td>运行环境</td><td>Chrome/Edge/Safari/Firefox 浏览器</td></tr>
+<tr><td>数据存储</td><td>Supabase Cloud PostgreSQL + localStorage 本地缓存</td></tr>
+</table>
+
+<h2>二、关键技术与开发栈</h2>
+
+<h3>2.1 核心开发技术</h3>
+<table>
+<tr><th>技术</th><th>版本/说明</th></tr>
+<tr><td>HTML5</td><td>页面结构与语义化标签</td></tr>
+<tr><td>CSS3</td><td>CSS 变量系统、Flexbox/Grid 响应式布局、大圆角设计风格</td></tr>
+<tr><td>JavaScript</td><td>ES6+，async/await 异步编程、fetch API、事件委托</td></tr>
+<tr><td>Chart.js</td><td>v4.4（CDN 引入），Doughnut/Line/Bar 三种图表</td></tr>
+<tr><td>Supabase</td><td>BaaS 平台，提供 Auth 认证 + PostgreSQL 数据库</td></tr>
+<tr><td>@supabase/supabase-js</td><td>v2（CDN 引入），前端 JS 客户端 SDK</td></tr>
+</table>
+
+<h3>2.2 辅助开发技术/工具</h3>
+<table>
+<tr><th>工具</th><th>用途</th></tr>
+<tr><td>Git + GitHub</td><td>版本控制与代码托管</td></tr>
+<tr><td>CodeBuddy AI</td><td>代码生成、Bug 排查、文档编写</td></tr>
+<tr><td>jsDelivr CDN</td><td>第三方库引入</td></tr>
+<tr><td>GitHub Pages</td><td>静态站点托管</td></tr>
+<tr><td>Supabase SQL Editor</td><td>表结构与 RLS 策略配置</td></tr>
+</table>
+
+<h2>三、项目需求分析</h2>
+
+<h3>3.1 功能性需求</h3>
+<ol>
+<li>用户注册与登录（邮箱 + 密码，Supabase Auth 认证）</li>
+<li>快速记账（12 类支出、6 类收入，快捷金额按钮）</li>
+<li>流水明细查询（按月折叠展示，类型筛选和时间排序切换）</li>
+<li>数据可视化分析（消费占比环形图、收支趋势折线图、类别排行柱状图）</li>
+<li>心情日志（6 种 Emoji + 文字记录，按月汇总，4 位密码保护）</li>
+<li>日/月支出限额设置与超限横幅警告</li>
+<li>蒲公英主题三套配色切换（赛博玫红/浅蓝/浅黄）</li>
+<li>侧边栏自定义标题编辑</li>
+<li>收支记录 CSV 导出</li>
+<li>云端数据同步（多设备登录同一账号数据一致）</li>
+</ol>
+
+<h3>3.2 非功能性需求</h3>
+<ul>
+<li><strong>易用性：</strong>纯浏览器打开即用，无需安装；登录注册不超过 3 步；Toast 提示反馈所有操作。</li>
+<li><strong>兼容性：</strong>响应式布局适配桌面端和移动端；主流浏览器均正常显示。</li>
+<li><strong>稳定性：</strong>localStorage 本地缓存秒级加载，离线可查看历史；Supabase 云端持久化；upsert 避免重复写入。</li>
+<li><strong>安全性：</strong>Supabase RLS 行级安全策略；心情日志额外 4 位密码保护。</li>
+</ul>
+
+<h2>四、项目总体设计</h2>
+
+<h3>4.1 整体架构设计</h3>
+<p>本项目采用单页应用（SPA）架构，前后端分离开发模式。前端为纯静态 HTML/CSS/JavaScript 三文件结构（index.html + styles.css + app.js），无构建工具依赖，通过 CDN 引入第三方库。后端服务完全由 Supabase BaaS 平台提供，包含 Auth 认证服务和 PostgreSQL 云数据库。数据采用本地优先（Local-First）策略：读写优先操作 localStorage 实现秒级响应，后台异步通过 Supabase REST API 与云端双向同步。UI 采用 CSS 变量主题系统，通过 root 变量 + body.theme 类选择器实现全局换肤。</p>
+
+<h3>4.2 功能模块设计</h3>
+<ul>
+<li><strong>模块一：认证登录模块</strong>—— 负责用户注册、登录、登出及会话管理。基于 Supabase Auth 实现，提供 doLogin()、doRegister()、doLogout() 功能及 boot() 自动恢复会话。</li>
+<li><strong>模块二：记账业务模块</strong>—— 核心业务逻辑，包含快速记账、流水查询、类别筛选排序、限额检查与超限警告、CSV 导出。</li>
+<li><strong>模块三：数据可视化模块</strong>—— 基于 Chart.js v4.4 实现三张图表，支持按月份切换。</li>
+<li><strong>模块四：云端同步模块</strong>—— 管理 Supabase 云端数据库读写与同步策略，本地与云端智能合并去重。</li>
+<li><strong>模块五：心情日志模块</strong>—— 今日心情记录，6 种 Emoji 选择，日志历史列表查看，4 位密码保护。</li>
+<li><strong>模块六：设置与主题模块</strong>—— 日/月限额配置、三套主题切换、标题编辑、密码修改。</li>
+</ul>
+
+<h3>4.3 页面/路由结构设计</h3>
+<p>本项目为单页应用，所有页面通过 CSS display 控制显隐切换：</p>
+<pre>index.html (主入口)
+├── 侧边栏 — Logo/标题 + 导航菜单
+├── 主内容区
+│   ├── 首页 — 今日摘要 + 记账表单 + 蒲公英动画
+│   ├── 流水 — 筛选 + 流水列表
+│   ├── 分析 — 三张 Chart.js 图表
+│   ├── 日志 — 日历网格 + 编辑 + 汇总
+│   └── 设置 — 标题/主题/限额配置
+├── 登录遮罩 — 邮箱+密码 + 登录/注册按钮
+└── FAB 浮动按钮
+
+文件结构：
+├── index.html   主程序
+├── styles.css   CSS 样式
+├── app.js       JS 业务逻辑
+└── README.md    项目说明</pre>
+
+<h2>五、核心功能实现与代码说明</h2>
+
+<h3>功能一：Supabase Auth 邮箱认证系统</h3>
+<p><strong>实现思路：</strong>使用 Supabase 客户端 SDK 的 Auth 模块替代旧版自建用户名密码体系。用户通过邮箱和密码注册/登录，Supabase 返回 JWT 会话 token，下次访问时通过 getSession() 自动恢复登录态。</p>
+<pre><code>var SUPABASE_URL = 'https://bmfwgxfrdtjfourwtwhl.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_...';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pwd = document.getElementById('loginPassword').value;
+  var { data, error } = await sb.auth.signInWithPassword({ email, password: pwd });
+  if (error) { errEl.textContent = '❌ ' + error.message; return; }
+  await onAuthSuccess(data.user);
+}
+
+async function doRegister() {
+  var { data, error } = await sb.auth.signUp({ email, password: pwd });
+  if (error) { /* 错误处理 */ }
+  if (data.user && !data.session) alert('注册成功！请检查邮箱确认注册');
+}</code></pre>
+<p><strong>实现效果：</strong>用户打开网页即看到登录界面，输入邮箱密码点击「登录」，或首次使用点击「注册」。登录成功后侧边栏显示邮箱，刷新页面无需重复登录。</p>
+
+<h3>功能二：本地优先（Local-First）云端双向数据同步</h3>
+<p><strong>实现思路：</strong>数据变更时立即写入 localStorage 保证秒级响应，同时异步推送到 Supabase。启动时先读本地缓存渲染（秒开），后台从云端拉取数据做智能合并——以 createdAt 时间戳去重取并集。</p>
+<pre><code>async function syncUserDataFromCloud() {
+  var { data: recData } = await sb.from('records')
+    .select('*').eq('user_id', currentUser)
+    .order('created_at', { ascending: false });
+  var cloudRecords = recData.map(r => r.data);
+  var merged = {};
+  records.forEach(r => merged[r.id] = r);
+  cloudRecords.forEach(r => {
+    if (!merged[r.id] || r.updatedAt > merged[r.id].updatedAt) merged[r.id] = r;
+  });
+  records = Object.values(merged);
+}
+
+async function saveRecordsToCloud() {
+  localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
+  var rows = records.map(r => ({
+    user_id: currentUser, record_id: r.id, data: r,
+    created_at: r.createdAt, updated_at: r.updatedAt || r.createdAt
+  }));
+  await sb.from('records').upsert(rows, { onConflict: 'record_id' });
+}</code></pre>
+<p><strong>实现效果：</strong>任何网络环境下都能流畅记账，即使断网也能查看和新增记录；联网后自动同步到云端，多设备数据一致。</p>
+
+<h3>功能三：基于 Chart.js 的消费数据分析可视化</h3>
+<p><strong>实现思路：</strong>根据选中月份过滤记录，分别聚合统计数据：(1) 按 category 组汇总占比 → 环形图；(2) 按日期汇总收支净额 → 折线图；(3) 按 category 组汇总金额 → 柱状图。切换月份前先调用 destroyCharts() 防止 Canvas 叠加。</p>
+<pre><code>function renderCharts() {
+  destroyCharts();  // 必须先销毁旧实例
+  var monthRecords = records.filter(r => getMonthKey(r.date) === month);
+  var expenseRecords = monthRecords.filter(r => r.type === 'expense');
+  var catMap = {};
+  expenseRecords.forEach(r => catMap[r.category] = (catMap[r.category]||0) + Number(r.amount));
+  doughnutChart = new Chart(document.getElementById('doughnutChart'), {
+    type: 'doughnut', data: {
+      labels: Object.keys(catMap),
+      datasets: [{ data: Object.values(catMap), backgroundColor: EXPENSE_COLORS }]
+    }
+  });
+}</code></pre>
+<p><strong>实现效果：</strong>分析页面清晰展示本月消费分布、每日收支走势、类别金额排名，支持切换月份对比。</p>
+
+<h2>六、项目运行效果展示</h2>
+
+<h3>数据库表结构</h3>
+<table>
+<tr><th>表名</th><th>字段</th><th>说明</th></tr>
+<tr><td>records</td><td>user_id(UUID) + record_id(BIGINT) + data(JSONB) + timestamps</td><td>收支记录</td></tr>
+<tr><td>diaries</td><td>user_id(UUID) + diary_date(TEXT) + data(JSONB) + timestamps</td><td>心情日志</td></tr>
+<tr><td>user_settings</td><td>user_id(UUID) + key(TEXT) + value(TEXT)</td><td>用户设置</td></tr>
+</table>
+
+<h3>主题系统</h3>
+<table>
+<tr><th>主题</th><th>主色调</th><th>风格</th></tr>
+<tr><td>🌸 赛博玫红</td><td>#e91e8c</td><td>深色暗黑 + 荧光绿特效 + 扫描线动画</td></tr>
+<tr><td>🩵 浅蓝</td><td>#5b9bd5</td><td>清新明亮风格</td></tr>
+<tr><td>🌼 浅黄</td><td>#f0c040</td><td>温暖柔和风格</td></tr>
+</table>
+
+<h2>七、项目测试与问题解决</h2>
+
+<h3>7.1 功能测试</h3>
+<ul>
+<li>✅ 注册新账号 → 登录成功 → 侧边栏显示邮箱</li>
+<li>✅ 新增记录 → 流水实时更新 → 刷新数据仍在</li>
+<li>✅ 切换主题 → 全局配色立即生效</li>
+<li>✅ 设置限额 → 超限 → 顶部红色横幅警告</li>
+<li>✅ 心情日志 → 密码保护 → 需验证密码</li>
+<li>✅ 分析页三图表正确渲染 → 切换月份数据跟随</li>
+<li>✅ 同一账号多设备登录 → 数据自动同步</li>
+</ul>
+
+<h3>7.2 开发问题与解决方案</h3>
+
+<p><strong>问题 1：Supabase RLS 策略导致 400 Bad Request</strong></p>
+<ul>
+<li><strong>现象：</strong>登录后操作报错 user_settings 400 Bad Request</li>
+<li><strong>原因：</strong>数据库表保留旧版 username 列（NOT NULL约束）和旧 RLS 策略</li>
+<li><strong>解决：</strong>SQL Editor 执行 ALTER TABLE DROP COLUMN username，重建 RLS 策略 USING (user_id = auth.uid())</li>
+</ul>
+
+<p><strong>问题 2：Chart.js 切换月份时图表叠加重叠</strong></p>
+<ul>
+<li><strong>现象：</strong>切换月份后新图表叠在旧图表上面</li>
+<li><strong>原因：</strong>Canvas 上绑定了旧 Chart 实例未释放</li>
+<li><strong>解决：</strong>renderCharts() 开头先调用 destroyCharts() 逐一 .destroy() 销毁</li>
+</ul>
+
+<p><strong>问题 3：async/await 异步顺序混乱</strong></p>
+<ul>
+<li><strong>现象：</strong>页面打开瞬间空白或数据缺失</li>
+<li><strong>原因：</strong>多个 async 函数并行执行但互相依赖</li>
+<li><strong>解决：</strong>采用"先读缓存渲染 + 后台异步同步"两阶段策略</li>
+</ul>
+
+<h2>八、项目总结与心得</h2>
+
+<h3>8.1 项目总结</h3>
+<p>本项目「我的账本」v6 已按预期完成全部功能开发。Supabase Auth 邮箱认证稳定运行，12 类收支快速记账与流水查询功能完备，Chart.js 可视化图表效果良好，蒲公英三套主题运行正常，云端同步保证多设备数据一致。</p>
+<p><strong>项目优点：</strong>纯原生技术栈零构建依赖、Local-First 策略保证离线可用、SPA 架构体验流畅、代码结构清晰。</p>
+<p><strong>存在不足：</strong>未引入 PWA 支持离线完全使用、CSV 导出编码兼容性问题、日志密码存储安全性待提升。</p>
+<p><strong>后续优化：</strong>引入 Service Worker 实现离线支持、增加年度报表、接入账单导入功能、加强密码加密。</p>
+
+<h3>8.2 学习心得</h3>
+<p>通过本次开发，我深刻体会到了 BaaS 平台（如 Supabase）带来的效率提升——不需自己搭建服务器和 API，几行代码就能完成认证和数据持久化。最大收获是学会独立排查问题：遇到 400 错误用 Network 面板看请求 payload，再用 SQL Editor 检查表结构和 RLS 策略定位根因。CodeBuddy AI 工具大幅提升了开发效率，特别是在重复性模板代码和文档撰写方面。也认识到代码规范的重要性——async 函数没加 await 导致数据竞争 bug，统一改为 async/await 链式调用后才彻底解决。</p>
+
+<h2>九、参考文献</h2>
+<ol>
+<li>Supabase 官方文档 — https://supabase.com/docs</li>
+<li>Chart.js 官方文档 — https://www.chartjs.org/docs/</li>
+<li>MDN Web Docs — https://developer.mozilla.org/</li>
+<li>GitHub 仓库 — https://github.com/xiaoruirui170/6.4</li>
+<li>CodeBuddy AI 助手 — https://www.codebuddy.ai</li>
+</ol>
+
+<h2>十、提交要素自查清单</h2>
+<ul>
+<li>✅ 项目源码完整齐全，无文件缺失、无报错，可正常启动运行</li>
+<li>✅ 项目报告所有模块已完整填写，内容贴合个人开发项目</li>
+<li>✅ README.md、配套运行说明、技术说明等内容齐全</li>
+<li>✅ 核心代码解析、问题与解决方案内容真实具体，无空项</li>
+<li>✅ 整体项目功能完整，达到课程期末项目考核要求</li>
+</ul>
+
+<div class="footer">
+<p>我的账本 v6 &copy; 2026 曾瑞 | GitHub: github.com/xiaoruirui170/6.4 | 在线地址: xiaoruirui170.github.io/6.4/</p>
+</div>
+
+</body>
+</html>

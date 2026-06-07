@@ -1,0 +1,3215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的账本</title>
+  <style>?/* ================================================================
+   我的账本 - 橙黄色系主题 (#ff8822)
+   左右分栏布局 | 响应式 | 圆角设计
+   新增：登录密码页 | 月度限额 | 按月折叠流水 | 日志密码验证
+   ================================================================ */
+
+/* ========== CSS 变量 ========== */
+:root {
+  --primary: #ff8822;
+  --primary-dark: #e6770f;
+  --primary-light: #fff3e8;
+  --primary-bg: #fffaf5;
+  --sidebar-bg: #ff8822;
+  --sidebar-text: #ffffff;
+  --sidebar-hover: rgba(255,255,255,0.18);
+  --sidebar-active: rgba(255,255,255,0.28);
+  --danger: #e74c3c;
+  --success: #27ae60;
+  --income: #07c160;
+  --bg: #f5f6fa;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --text-secondary: #909399;
+  --text-light: #c0c4cc;
+  --border: #ebeef5;
+  --border-light: #f0f0f0;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
+  --transition: 0.25s ease;
+}
+
+/* ========== Reset ========== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+/* ================================================================
+   登录密码页
+   ================================================================ */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #fff3e8 0%, #ffe0cc 50%, #ffd4aa 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.login-box {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 40px 30px 30px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  animation: modalIn 0.4s ease;
+}
+
+.login-icon {
+  font-size: 56px;
+  margin-bottom: 12px;
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.login-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.login-dots {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.login-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  background: #f5f5f5;
+  transition: all 0.2s;
+}
+
+.login-dot.filled {
+  border-color: var(--primary);
+  background: var(--primary);
+  box-shadow: 0 0 0 4px rgba(255,136,34,0.15);
+}
+
+.login-dot.error {
+  border-color: var(--danger);
+  background: var(--danger);
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.login-error {
+  font-size: 12px;
+  color: var(--danger);
+  min-height: 18px;
+  margin-bottom: 8px;
+}
+
+/* 账户列表 */
+.account-list {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f8f9fb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 6px;
+  border: 2px solid transparent;
+}
+.account-card:hover {
+  background: #eef0f5;
+  border-color: var(--primary);
+  transform: translateX(3px);
+}
+.account-card-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.account-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.account-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.account-card-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.account-card-arrow {
+  font-size: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+body.theme-pink .account-card {
+  background: #222;
+  border-color: #333;
+}
+body.theme-pink .account-card:hover {
+  background: #2a2a2a;
+  border-color: #39ff14;
+}
+body.theme-pink .account-card-name { color: #e0e0e0; }
+body.theme-pink .account-card-arrow { color: #39ff14; }
+
+/* 侧边栏用户信息 */
+.sidebar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin: 0 8px 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 10px;
+}
+.sidebar-user-icon { font-size: 18px; }
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.theme-yellow .sidebar-user-info { background: rgba(0,0,0,0.08); }
+body.theme-yellow .sidebar-user-name { color: #4a3800; }
+body.theme-pink .sidebar-user-info { background: rgba(57,255,20,0.1); }
+body.theme-pink .sidebar-user-name { color: #39ff14; }
+
+/* 数字键盘 */
+.login-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.keypad-btn {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 16px;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  background: #f8f9fb;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keypad-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.keypad-btn:active {
+  background: var(--primary);
+  color: #fff;
+  transform: scale(0.92);
+}
+
+.keypad-btn.del {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.keypad-btn.empty {
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ================================================================
+   主容器
+   ================================================================ */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ================================================================
+   左侧导航栏
+   ================================================================ */
+.sidebar {
+  width: 200px;
+  min-width: 200px;
+  background: linear-gradient(180deg, #ff9922 0%, #ff8822 40%, #e6770f 100%);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 500;
+  box-shadow: 2px 0 24px rgba(255,136,34,0.2);
+  transition: transform var(--transition);
+}
+
+.sidebar-brand {
+  padding: 28px 16px 20px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.sidebar-brand-icon { font-size: 36px; margin-bottom: 8px; }
+
+.sidebar-title {
+  display: block;
+  width: 100%;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.sidebar-title:focus {
+  background: rgba(255,255,255,0.32);
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.1);
+}
+.sidebar-title::placeholder { color: rgba(255,255,255,0.5); }
+
+.sidebar-nav {
+  list-style: none;
+  padding: 16px 12px;
+  flex: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  user-select: none;
+}
+.nav-item:hover { background: var(--sidebar-hover); }
+.nav-item.active {
+  background: var(--sidebar-active);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+}
+.nav-icon { font-size: 20px; flex-shrink: 0; }
+
+.sidebar-footer {
+  padding: 16px 14px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.footer-btn {
+  width: 40px; height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.footer-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.1); }
+.footer-btn:active { transform: scale(0.95); }
+
+/* ================================================================
+   右侧主内容区
+   ================================================================ */
+.main-content {
+  flex: 1;
+  margin-left: 200px;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.page {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+  animation: pageIn 0.3s ease;
+}
+.page.active { display: flex; }
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-header {
+  background: #fff;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text);
+}
+.menu-toggle:hover { background: var(--primary-light); }
+
+.page-title { font-size: 18px; font-weight: 700; color: var(--text); }
+
+.page-body {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 20px 100px;
+  width: 100%;
+}
+
+/* ================================================================
+   信息卡片（3列：今日支出/今日限额/月度限额）
+   ================================================================ */
+.info-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.info-cards.three-cards {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.info-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.limit-card { cursor: pointer; }
+.limit-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+.info-card-icon { font-size: 28px; flex-shrink: 0; }
+.info-card-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.info-card-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+.info-card-value { font-size: 18px; font-weight: 700; color: var(--text); }
+.info-card-value.expense { color: var(--danger); }
+
+.info-card-badge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.limit-progress-wrap { width: 100%; margin-top: 4px; }
+.limit-progress-bar {
+  width: 100%; height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.limit-progress-fill {
+  height: 100%;
+  background: var(--success);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.limit-remain { font-size: 11px; color: var(--text-secondary); }
+
+/* ================================================================
+   快速记账卡片
+   ================================================================ */
+.quick-add-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.quick-add-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.quick-add-header h2 { font-size: 16px; font-weight: 700; }
+
+.date-pick {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text-secondary);
+  background: var(--primary-light);
+  padding: 6px 12px; border-radius: 20px;
+}
+.date-input {
+  border: none; background: transparent;
+  font-size: 13px; color: var(--text);
+  font-family: inherit; outline: none; cursor: pointer;
+}
+
+.type-switch { display: flex; gap: 10px; margin-bottom: 14px; }
+
+.type-btn {
+  flex: 1; padding: 11px;
+  border: 2px solid var(--border);
+  border-radius: 24px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  font-family: inherit; background: #fff; color: var(--text-secondary);
+}
+.type-btn:hover { border-color: var(--primary); }
+.type-btn.active[data-type="expense"] { border-color: var(--danger); background: #fef0f0; color: var(--danger); }
+.type-btn.active[data-type="income"] { border-color: var(--income); background: #eafaf1; color: var(--income); }
+
+.cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+.cat-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: #fff; cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.cat-btn:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,136,34,0.12); }
+.cat-btn:active { transform: scale(0.95); }
+.cat-btn.active { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 3px rgba(255,136,34,0.12); }
+
+.cat-icon { font-size: 26px; }
+.cat-name { font-size: 12px; color: var(--text); font-weight: 500; }
+
+.amount-area {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 14px; padding: 14px;
+  background: var(--primary-light); border-radius: var(--radius);
+  animation: slideDown 0.25s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.selected-cat { font-size: 14px; font-weight: 600; color: var(--text); }
+
+.amount-input {
+  padding: 12px 16px;
+  border: 1.5px solid var(--border); border-radius: 24px;
+  font-size: 18px; font-weight: 700; color: var(--text);
+  background: #fff; outline: none; font-family: inherit; text-align: center;
+  transition: border-color 0.2s;
+}
+.amount-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,136,34,0.1); }
+
+.note-input {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border); border-radius: 24px;
+  font-size: 14px; color: var(--text);
+  background: #fff; outline: none; font-family: inherit;
+  transition: border-color 0.2s;
+}
+.note-input:focus { border-color: var(--primary); }
+.note-input::placeholder { color: var(--text-light); }
+
+.amount-btns { display: flex; gap: 10px; }
+
+.btn-cancel {
+  flex: 1; padding: 11px;
+  border: 1.5px solid var(--border); border-radius: 24px;
+  font-size: 14px; font-weight: 600; background: #fff;
+  color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.btn-cancel:hover { background: #f5f6fa; }
+
+.btn-save {
+  flex: 1; padding: 11px;
+  border: none; border-radius: 24px;
+  font-size: 14px; font-weight: 600;
+  background: var(--primary); color: #fff;
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.btn-save:hover { background: var(--primary-dark); transform: scale(1.02); }
+.btn-save:active { transform: scale(0.97); }
+.btn-save.btn-full { width: 100%; padding: 12px; font-size: 15px; margin-top: 8px; }
+
+.quick-amounts {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; flex-wrap: wrap;
+  animation: slideDown 0.25s ease;
+}
+.quick-amounts > span { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.quick-amounts button {
+  padding: 6px 14px;
+  border: 1px solid var(--border); border-radius: 18px;
+  background: #fff; font-size: 13px; font-weight: 600;
+  color: var(--primary); cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.quick-amounts button:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.quick-amounts button:active { transform: scale(0.93); }
+
+/* ================================================================
+   流水页面 - 按月折叠
+   ================================================================ */
+.filter-bar {
+  display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.filter-bar select {
+  flex: 1; min-width: 80px; padding: 9px 10px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13px; background: #fff; color: var(--text);
+  outline: none; cursor: pointer; font-family: inherit;
+}
+.filter-bar select:focus { border-color: var(--primary); }
+
+#sortBtnR {
+  padding: 9px 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: #fff; font-size: 13px; color: var(--text);
+  cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: inherit;
+}
+#sortBtnR:hover { border-color: var(--primary); color: var(--primary); }
+
+.period-summary {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.period-summary-item {
+  flex: 1; background: #fff; border-radius: var(--radius-sm);
+  padding: 10px; text-align: center; box-shadow: var(--shadow);
+}
+.ps-val { font-size: 16px; font-weight: 700; display: block; }
+.ps-lbl { font-size: 11px; color: var(--text-secondary); display: block; margin-top: 2px; }
+
+/* 月份折叠列表 */
+.month-fold-list { display: flex; flex-direction: column; gap: 10px; }
+
+.month-fold-item {
+  background: #fff; border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+
+.month-fold-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px;
+  cursor: pointer; user-select: none;
+  transition: background 0.2s;
+  border-left: 4px solid var(--primary);
+}
+.month-fold-header:hover { background: var(--primary-light); }
+
+.month-fold-title {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+
+.month-fold-arrow {
+  font-size: 12px; color: var(--text-secondary);
+  transition: transform 0.3s ease;
+}
+.month-fold-item.open .month-fold-arrow { transform: rotate(180deg); }
+
+.month-fold-summary {
+  display: flex; gap: 12px; font-size: 12px;
+}
+.month-fold-summary .mfs-expense { color: var(--danger); font-weight: 600; }
+.month-fold-summary .mfs-income { color: var(--income); font-weight: 600; }
+.month-fold-summary .mfs-count { color: var(--text-secondary); }
+
+.month-fold-body {
+  display: none;
+  border-top: 1px solid var(--border-light);
+}
+.month-fold-item.open .month-fold-body { display: block; }
+
+/* 日期分组 */
+.date-group-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; margin-top: 4px;
+  background: var(--primary-light); border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary);
+}
+.date-group-header:first-child { margin-top: 8px; }
+.date-group-date { font-size: 13px; font-weight: 700; color: var(--primary-dark); }
+.today-badge {
+  display: inline-block; font-size: 10px; padding: 2px 8px;
+  border-radius: 10px; background: var(--primary); color: #fff; margin-left: 6px;
+}
+.date-group-subtotal { display: flex; gap: 10px; font-size: 11px; }
+.dg-sub-expense { color: var(--danger); font-weight: 600; }
+.dg-sub-income { color: var(--income); font-weight: 600; }
+
+.record-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: #fff;
+  border-radius: var(--radius-sm); margin: 4px 8px;
+  box-shadow: var(--shadow); transition: transform 0.15s;
+}
+.record-item:hover { transform: translateX(3px); }
+.record-item.expense-record { border-left: 3px solid var(--danger); }
+.record-item.income-record { border-left: 3px solid var(--income); }
+.record-icon { font-size: 24px; flex-shrink: 0; }
+.record-info { flex: 1; min-width: 0; }
+.record-cat-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.record-cat { font-size: 14px; font-weight: 600; }
+.record-note-tag {
+  font-size: 11px; color: var(--primary);
+  background: var(--primary-light); padding: 1px 8px;
+  border-radius: 10px; white-space: nowrap;
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+}
+.record-amount { font-size: 16px; font-weight: 700; white-space: nowrap; }
+.record-amount.expense-amount { color: var(--danger); }
+.record-amount.income-amount { color: var(--income); }
+.record-delete {
+  width: 32px; height: 32px; border: none;
+  background: #fdecea; border-radius: 50%;
+  font-size: 14px; cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.record-delete:hover { background: #fadbd8; transform: scale(1.1); }
+
+.empty-state { text-align: center; padding: 50px 20px; color: var(--text-light); font-size: 14px; }
+
+/* ================================================================
+   分析页面
+   ================================================================ */
+.chart-controls { margin-bottom: 14px; }
+.chart-controls select {
+  padding: 9px 16px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 14px;
+  background: #fff; color: var(--text); outline: none; cursor: pointer; font-family: inherit;
+}
+.chart-controls select:focus { border-color: var(--primary); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+
+.stat-card {
+  background: #fff; border-radius: var(--radius-sm);
+  padding: 14px 8px; text-align: center; box-shadow: var(--shadow);
+}
+.stat-val { font-size: 16px; font-weight: 700; color: var(--primary); display: block; }
+.stat-val.income { color: var(--income); }
+.stat-lbl { font-size: 11px; color: var(--text-secondary); margin-top: 4px; display: block; }
+
+.chart-card {
+  background: #fff; border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px;
+}
+.chart-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.chart-wrap { position: relative; width: 100%; max-height: 280px; }
+.chart-wrap canvas { width: 100% !important; }
+
+/* ================================================================
+   日志页面
+   ================================================================ */
+.card {
+  background: #fff; border-radius: var(--radius);
+  padding: 18px; box-shadow: var(--shadow); margin-bottom: 14px;
+}
+
+.diary-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.diary-date { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+
+.mood-picker { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+
+.mood-btn {
+  width: 44px; height: 44px;
+  border: 2px solid var(--border); border-radius: 50%;
+  font-size: 22px; background: #fff; cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.mood-btn:hover { border-color: var(--primary); transform: scale(1.1); }
+.mood-btn.selected { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 3px rgba(255,136,34,0.15); }
+
+.diary-textarea {
+  width: 100%; min-height: 100px; padding: 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 14px; color: var(--text); background: var(--primary-bg);
+  outline: none; resize: vertical; font-family: inherit;
+  transition: border-color 0.2s; margin-bottom: 10px;
+}
+.diary-textarea:focus { border-color: var(--primary); background: #fff; }
+
+.diary-list { display: flex; flex-direction: column; gap: 10px; }
+
+.diary-item {
+  padding: 14px; border-radius: var(--radius-sm);
+  background: #fff; border: 1px solid var(--border-light);
+  box-shadow: var(--shadow); cursor: pointer; transition: all 0.2s;
+}
+.diary-item:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+.diary-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.diary-item-mood { font-size: 28px; }
+.diary-item-date { font-size: 11px; color: var(--text-secondary); }
+.diary-item-content {
+  font-size: 13px; color: var(--text); line-height: 1.6;
+  white-space: pre-wrap;
+  max-height: 40px; overflow: hidden;
+}
+.diary-item-delete {
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; padding: 2px 10px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: transparent; font-family: inherit; transition: all 0.2s;
+}
+.diary-item-delete:hover { border-color: var(--danger); color: var(--danger); background: #fdecea; }
+
+.diary-view-mood { font-size: 48px; text-align: center; margin-bottom: 12px; }
+.diary-view-date { font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 16px; }
+.diary-view-text { font-size: 14px; color: var(--text); line-height: 1.8; white-space: pre-wrap; padding: 14px; background: var(--primary-bg); border-radius: var(--radius-sm); }
+
+/* ================================================================
+   弹窗
+   ================================================================ */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 600;
+  justify-content: center; align-items: center; padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: #fff; border-radius: var(--radius);
+  width: 100%; max-width: 380px;
+  box-shadow: var(--shadow-lg); animation: modalIn 0.3s ease; overflow: hidden;
+}
+
+.overlimit-modal { max-width: 340px; }
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 18px; border-bottom: 1px solid var(--border-light);
+}
+.modal-header h3 { font-size: 16px; font-weight: 700; }
+
+.modal-close {
+  width: 30px; height: 30px; border: none; border-radius: 50%;
+  background: var(--bg); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); transition: all 0.2s;
+}
+.modal-close:hover { background: var(--danger); color: #fff; }
+
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.modal-body label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+.modal-input {
+  padding: 14px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 20px; font-weight: 700;
+  color: var(--text); background: var(--primary-bg);
+  outline: none; text-align: center; font-family: inherit;
+  transition: border-color 0.2s;
+}
+.modal-input:focus { border-color: var(--primary); background: #fff; }
+
+/* 密码圆点 */
+.pwd-dots {
+  display: flex; justify-content: center; gap: 14px; margin-bottom: 8px;
+}
+.pwd-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid #ddd; background: #f5f5f5;
+  transition: all 0.2s;
+}
+.pwd-dot.filled { border-color: var(--primary); background: var(--primary); box-shadow: 0 0 0 4px rgba(255,136,34,0.15); }
+.pwd-dot.error { border-color: var(--danger); background: var(--danger); animation: shake 0.4s ease; }
+
+/* ================================================================
+   Toast
+   ================================================================ */
+.toast {
+  position: fixed; top: 80px; left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: #333; color: #fff;
+  padding: 12px 28px; border-radius: 24px;
+  font-size: 14px; font-weight: 500;
+  z-index: 700; opacity: 0; pointer-events: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ================================================================
+   FAB
+   ================================================================ */
+.fab {
+  position: fixed; bottom: 28px; right: 28px;
+  width: 56px; height: 56px; border: none; border-radius: 50%;
+  background: linear-gradient(135deg, #ff9922, #ff8822);
+  color: #fff; font-size: 28px; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(255,136,34,0.4);
+  transition: all 0.25s; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+}
+.fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(255,136,34,0.5); }
+.fab:active { transform: scale(0.94); }
+
+/* ================================================================
+   蒲公英装饰区（记账页中部大蒲公英）
+   ================================================================ */
+.dandelion-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 0 20px;
+  position: relative;
+}
+
+.dandelion-flower {
+  font-size: 80px;
+  transition: all 0.5s ease;
+  animation: floatDandelion 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08));
+  cursor: default;
+}
+
+@keyframes floatDandelion {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(3deg); }
+  75% { transform: translateY(4px) rotate(-3deg); }
+}
+
+.dandelion-stem {
+  width: 3px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--dandelion-primary, #e91e8c), #88c888);
+  border-radius: 2px;
+  margin-top: -8px;
+  opacity: 0.6;
+}
+
+.dandelion-leaves {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 16px;
+  background: linear-gradient(90deg, transparent, rgba(136,200,136,0.3), rgba(136,200,136,0.5), rgba(136,200,136,0.3), transparent);
+  border-radius: 50%;
+}
+
+/* 赛博科技线条（仅赛博主题显示） */
+.dandelion-cyber-lines {
+  display: none;
+  position: absolute;
+  inset: -20px -40px;
+  pointer-events: none;
+  z-index: 0;
+}
+.dandelion-cyber-lines::before {
+  content: '';
+  position: absolute;
+  top: 30%; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(57,255,20,0.3), rgba(57,255,20,0.6), rgba(57,255,20,0.3), transparent);
+  animation: cyberScan 3s linear infinite;
+}
+.dandelion-cyber-lines::after {
+  content: '';
+  position: absolute;
+  top: 70%; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(233,30,140,0.3), rgba(233,30,140,0.6), rgba(233,30,140,0.3), transparent);
+  animation: cyberScan 3s linear 1.5s infinite;
+}
+@keyframes cyberScan {
+  0% { transform: translateX(-30%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(30%); opacity: 0; }
+}
+
+/* 赛博主题蒲公英发光 */
+body.theme-pink .dandelion-flower {
+  text-shadow: 0 0 20px rgba(233,30,140,0.5), 0 0 40px rgba(57,255,20,0.3);
+}
+body.theme-pink .dandelion-stem {
+  background: linear-gradient(to bottom, #39ff14, #e91e8c);
+  box-shadow: 0 0 10px rgba(57,255,20,0.4);
+}
+body.theme-pink .dandelion-leaves {
+  background: linear-gradient(90deg, transparent, rgba(57,255,20,0.4), rgba(233,30,140,0.3), rgba(57,255,20,0.4), transparent);
+}
+
+/* ================================================================
+   蒲公英主题切换按钮栏（侧边栏下方）
+   ================================================================ */
+.sidebar-theme-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 8px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.dandelion-theme-btn {
+  padding: 9px 14px;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  transition: all 0.25s;
+  font-family: inherit;
+  white-space: nowrap;
+  text-align: center;
+}
+.dandelion-theme-btn:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.6);
+  transform: translateX(2px);
+}
+.dandelion-theme-btn:active { transform: scale(0.95); }
+
+/* 玫红主题按钮激活 */
+.dandelion-theme-btn[data-theme="pink"].active {
+  background: rgba(255,255,255,0.95);
+  border-color: #e91e8c;
+  color: #e91e8c;
+  font-weight: 700;
+}
+
+/* 浅蓝主题按钮激活 */
+.dandelion-theme-btn[data-theme="blue"].active {
+  background: rgba(255,255,255,0.95);
+  border-color: #5b9bd5;
+  color: #5b9bd5;
+  font-weight: 700;
+}
+
+/* 浅黄主题按钮激活 */
+.dandelion-theme-btn[data-theme="yellow"].active {
+  background: rgba(0,0,0,0.05);
+  border-color: #d4a830;
+  color: #4a3800;
+  font-weight: 700;
+}
+
+/* ================================================================
+   蒲公英主题全局配色覆盖
+   ================================================================ */
+
+/* --- 赛博玫红 + 荧光绿（深色背景）--- */
+body.theme-pink {
+  --primary: #e91e8c;
+  --primary-dark: #c2185b;
+  --primary-light: #2d0a1e;
+  --primary-bg: #1a0a14;
+  --sidebar-bg: #1a0a14;
+  --sidebar-text: #ffffff;
+  --sidebar-hover: rgba(233,30,140,0.25);
+  --sidebar-active: rgba(233,30,140,0.4);
+  --danger: #e74c3c;
+  --success: #39ff14;
+  --income: #39ff14;
+  --bg: #0d0d0d;
+  --card-bg: #1a1a1a;
+  --text: #e0e0e0;
+  --text-secondary: #999;
+  --text-light: #666;
+  --border: #333;
+  --border-light: #2a2a2a;
+  --shadow: 0 2px 12px rgba(233,30,140,0.08);
+  --shadow-md: 0 4px 16px rgba(233,30,140,0.12);
+  --shadow-lg: 0 8px 30px rgba(233,30,140,0.15);
+}
+body.theme-pink .sidebar {
+  background: linear-gradient(180deg, #2d0a1e 0%, #1a0a14 60%, #0d0510 100%) !important;
+  box-shadow: 2px 0 24px rgba(233,30,140,0.3);
+  border-right: 1px solid rgba(57,255,20,0.15);
+}
+body.theme-pink .page-header {
+  background: #1a1a1a;
+  border-bottom-color: #2a2a2a;
+}
+body.theme-pink .fab {
+  background: linear-gradient(135deg, #e91e8c, #c2185b);
+  box-shadow: 0 4px 20px rgba(233,30,140,0.6), 0 0 30px rgba(57,255,20,0.15);
+}
+body.theme-pink .login-overlay {
+  background: linear-gradient(135deg, #1a0a14 0%, #2d0a1e 50%, #0d0510 100%);
+}
+body.theme-pink .login-box { background: #1a1a1a; border: 1px solid rgba(57,255,20,0.2); }
+body.theme-pink .login-title { color: #e0e0e0; }
+body.theme-pink .login-sub { color: #999; }
+body.theme-pink .login-dot { border-color: #444; background: #222; }
+body.theme-pink .login-dot.filled { border-color: #39ff14; background: #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.5); }
+body.theme-pink .keypad-btn { background: #222; color: #ccc; }
+body.theme-pink .keypad-btn:hover { background: #2d0a1e; color: #39ff14; }
+body.theme-pink .keypad-btn:active { background: #39ff14; color: #000; }
+body.theme-pink .keypad-btn.del { color: #e91e8c; }
+body.theme-pink .month-fold-header { border-left-color: #e91e8c; }
+body.theme-pink .month-fold-header:hover { background: rgba(233,30,140,0.08); }
+body.theme-pink .month-fold-item { background: #1a1a1a; }
+body.theme-pink .month-fold-body { border-top-color: #2a2a2a; }
+body.theme-pink .date-group-header { background: rgba(233,30,140,0.1); border-left-color: #39ff14; }
+body.theme-pink .date-group-date { color: #e91e8c; }
+body.theme-pink .today-badge { background: #39ff14; color: #000; }
+body.theme-pink .record-item { background: #1a1a1a; }
+body.theme-pink .quick-amounts button { color: #39ff14; border-color: #333; background: #1a1a1a; }
+body.theme-pink .quick-amounts button:hover { background: #39ff14; color: #000; border-color: #39ff14; }
+body.theme-pink .amount-input { background: #222; border-color: #333; color: #e0e0e0; }
+body.theme-pink .amount-input:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,0.1); }
+body.theme-pink .note-input { background: #222; border-color: #333; color: #e0e0e0; }
+body.theme-pink .note-input:focus { border-color: #39ff14; }
+body.theme-pink .type-btn { background: #1a1a1a; border-color: #333; color: #999; }
+body.theme-pink .type-btn:hover { border-color: #39ff14; }
+body.theme-pink .type-btn.active[data-type="expense"] { border-color: #e91e8c; background: rgba(233,30,140,0.15); color: #e91e8c; }
+body.theme-pink .type-btn.active[data-type="income"] { border-color: #39ff14; background: rgba(57,255,20,0.1); color: #39ff14; }
+body.theme-pink .cat-btn { background: #1a1a1a; border-color: #333; }
+body.theme-pink .cat-btn:hover { border-color: #39ff14; box-shadow: 0 4px 12px rgba(57,255,20,0.1); }
+body.theme-pink .cat-btn.active { border-color: #39ff14; background: rgba(57,255,20,0.08); box-shadow: 0 0 0 3px rgba(57,255,20,0.1); }
+body.theme-pink .cat-name { color: #ccc; }
+body.theme-pink .btn-save { background: linear-gradient(135deg, #e91e8c, #c2185b); }
+body.theme-pink .btn-save:hover { background: linear-gradient(135deg, #c2185b, #880e4f); }
+body.theme-pink .btn-cancel { background: #222; border-color: #333; color: #999; }
+body.theme-pink .btn-cancel:hover { background: #333; }
+body.theme-pink .record-note-tag { color: #39ff14; background: rgba(57,255,20,0.08); }
+body.theme-pink .record-cat { color: #e0e0e0; }
+body.theme-pink .mood-btn { background: #1a1a1a; border-color: #333; }
+body.theme-pink .mood-btn:hover { border-color: #39ff14; }
+body.theme-pink .mood-btn.selected { border-color: #39ff14; background: rgba(57,255,20,0.1); box-shadow: 0 0 0 3px rgba(57,255,20,0.15); }
+body.theme-pink .stat-val { color: #39ff14; }
+body.theme-pink .stat-card { background: #1a1a1a; }
+body.theme-pink .stat-lbl { color: #999; }
+body.theme-pink .chart-card { background: #1a1a1a; }
+body.theme-pink .chart-card h3 { color: #e0e0e0; }
+body.theme-pink .info-card { background: #1a1a1a; }
+body.theme-pink .info-card-label { color: #999; }
+body.theme-pink .info-card-value { color: #e0e0e0; }
+body.theme-pink .info-card-value.expense { color: #e91e8c; }
+body.theme-pink .info-card-badge { background: #222; color: #999; }
+body.theme-pink .diary-item { background: #1a1a1a; border-color: #333; }
+body.theme-pink .diary-item:hover { border-color: #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.1); }
+body.theme-pink .diary-item-content { color: #999; }
+body.theme-pink .diary-textarea { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+body.theme-pink .diary-textarea:focus { border-color: #39ff14; background: #1a1a1a; }
+body.theme-pink .login-dot.filled { border-color: #39ff14; background: #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.5); }
+body.theme-pink .pwd-dot.filled { border-color: #39ff14; background: #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.5); }
+body.theme-pink .filter-bar select { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+body.theme-pink .filter-bar select:focus { border-color: #39ff14; }
+body.theme-pink #sortBtnR { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+body.theme-pink #sortBtnR:hover { border-color: #39ff14; color: #39ff14; }
+body.theme-pink .chart-controls select { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+body.theme-pink .chart-controls select:focus { border-color: #39ff14; }
+body.theme-pink .modal { background: #1a1a1a; border: 1px solid rgba(57,255,20,0.15); }
+body.theme-pink .modal-header { border-bottom-color: #2a2a2a; }
+body.theme-pink .modal-header h3 { color: #e0e0e0; }
+body.theme-pink .modal-close { background: #222; color: #999; }
+body.theme-pink .modal-body label { color: #999; }
+body.theme-pink .modal-input { background: #222; border-color: #333; color: #e0e0e0; }
+body.theme-pink .modal-input:focus { border-color: #39ff14; background: #222; }
+body.theme-pink .period-summary-item { background: #1a1a1a; }
+body.theme-pink .ps-lbl { color: #999; }
+body.theme-pink .card { background: #1a1a1a; }
+body.theme-pink .diary-view-text { background: rgba(57,255,20,0.05); color: #e0e0e0; }
+body.theme-pink .empty-state { color: #666; }
+body.theme-pink .limit-progress-bar { background: #333; }
+body.theme-pink .nav-item.active {
+  background: rgba(57,255,20,0.15);
+  box-shadow: inset 0 0 0 1px rgba(57,255,20,0.3), 0 0 12px rgba(57,255,20,0.08);
+}
+body.theme-pink .nav-item:hover { background: rgba(57,255,20,0.08); }
+body.theme-pink .sidebar-theme-bar { border-top-color: rgba(57,255,20,0.15); }
+body.theme-pink .sidebar-title { background: rgba(57,255,20,0.08); border-color: rgba(57,255,20,0.2); }
+body.theme-pink .sidebar-title:focus { border-color: rgba(57,255,20,0.5); box-shadow: 0 0 0 4px rgba(57,255,20,0.1); }
+body.theme-pink .sidebar-title::placeholder { color: rgba(57,255,20,0.3); }
+body.theme-pink .dandelion-theme-btn[data-theme="pink"].active {
+  background: rgba(57,255,20,0.2);
+  border-color: #39ff14;
+  color: #39ff14;
+  text-shadow: 0 0 8px rgba(57,255,20,0.4);
+}
+body.theme-pink .dandelion-theme-btn {
+  border-color: rgba(57,255,20,0.15);
+  background: rgba(57,255,20,0.05);
+  color: rgba(255,255,255,0.7);
+}
+body.theme-pink .dandelion-theme-btn:hover {
+  background: rgba(57,255,20,0.15);
+  border-color: rgba(57,255,20,0.4);
+}
+body.theme-pink .sidebar-footer { border-top-color: rgba(57,255,20,0.15); }
+body.theme-pink .footer-btn { background: rgba(57,255,20,0.1); }
+body.theme-pink .footer-btn:hover { background: rgba(57,255,20,0.25); }
+body.theme-pink .sidebar-brand { border-bottom-color: rgba(57,255,20,0.15); }
+body.theme-pink .record-delete { background: rgba(233,30,140,0.15); }
+body.theme-pink .record-delete:hover { background: rgba(233,30,140,0.3); }
+body.theme-pink .diary-item-delete { background: #222; border-color: #444; color: #999; }
+body.theme-pink .diary-item-delete:hover { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.1); }
+body.theme-pink .amount-area { background: rgba(57,255,20,0.05); }
+body.theme-pink .date-pick { background: rgba(57,255,20,0.1); color: #39ff14; }
+body.theme-pink .date-input { color: #39ff14; }
+body.theme-pink .menu-toggle { color: #e0e0e0; }
+body.theme-pink .menu-toggle:hover { background: rgba(57,255,20,0.1); }
+body.theme-pink .quick-add-card { background: #1a1a1a; }
+body.theme-pink .toast { background: #2d0a1e; border: 1px solid rgba(57,255,20,0.3); }
+body.theme-pink .diary-date { color: #999; }
+
+/* --- 浅蓝 --- */
+body.theme-blue {
+  --primary: #5b9bd5;
+  --primary-dark: #3a7bc8;
+  --primary-light: #e8f4fd;
+  --primary-bg: #f0f8ff;
+  --sidebar-bg: #5b9bd5;
+  --sidebar-text: #ffffff;
+  --sidebar-hover: rgba(255,255,255,0.18);
+  --sidebar-active: rgba(255,255,255,0.28);
+}
+body.theme-blue .sidebar {
+  background: linear-gradient(180deg, #7bb3e0 0%, #5b9bd5 40%, #3a7bc8 100%) !important;
+  box-shadow: 2px 0 24px rgba(91,155,213,0.2);
+}
+body.theme-blue .fab {
+  background: linear-gradient(135deg, #7bb3e0, #5b9bd5);
+  box-shadow: 0 4px 20px rgba(91,155,213,0.4);
+}
+body.theme-blue .login-overlay {
+  background: linear-gradient(135deg, #e8f4fd 0%, #cce5ff 50%, #b3d9ff 100%);
+}
+body.theme-blue .month-fold-header { border-left-color: #5b9bd5; }
+body.theme-blue .date-group-header { background: #e8f4fd; border-left-color: #5b9bd5; }
+body.theme-blue .date-group-date { color: #3a7bc8; }
+body.theme-blue .today-badge { background: #5b9bd5; }
+body.theme-blue .quick-amounts button { color: #5b9bd5; }
+body.theme-blue .quick-amounts button:hover { background: #5b9bd5; border-color: #5b9bd5; }
+body.theme-blue .amount-input:focus { border-color: #5b9bd5; box-shadow: 0 0 0 3px rgba(91,155,213,0.1); }
+body.theme-blue .type-btn:hover { border-color: #5b9bd5; }
+body.theme-blue .cat-btn:hover { border-color: #5b9bd5; box-shadow: 0 4px 12px rgba(91,155,213,0.12); }
+body.theme-blue .cat-btn.active { border-color: #5b9bd5; background: #e8f4fd; box-shadow: 0 0 0 3px rgba(91,155,213,0.12); }
+body.theme-blue .btn-save { background: #5b9bd5; }
+body.theme-blue .btn-save:hover { background: #3a7bc8; }
+body.theme-blue .record-note-tag { color: #5b9bd5; background: #e8f4fd; }
+body.theme-blue .mood-btn:hover { border-color: #5b9bd5; }
+body.theme-blue .mood-btn.selected { border-color: #5b9bd5; background: #e8f4fd; box-shadow: 0 0 0 3px rgba(91,155,213,0.15); }
+body.theme-blue .stat-val { color: #5b9bd5; }
+body.theme-blue .diary-item:hover { border-color: #5b9bd5; }
+body.theme-blue .login-dot.filled { border-color: #5b9bd5; background: #5b9bd5; box-shadow: 0 0 0 4px rgba(91,155,213,0.15); }
+body.theme-blue .pwd-dot.filled { border-color: #5b9bd5; background: #5b9bd5; box-shadow: 0 0 0 4px rgba(91,155,213,0.15); }
+body.theme-blue .keypad-btn:hover { background: #e8f4fd; color: #5b9bd5; }
+body.theme-blue .keypad-btn:active { background: #5b9bd5; }
+body.theme-blue .filter-bar select:focus { border-color: #5b9bd5; }
+body.theme-blue .chart-controls select:focus { border-color: #5b9bd5; }
+body.theme-blue .modal-input:focus { border-color: #5b9bd5; }
+body.theme-blue .diary-textarea:focus { border-color: #5b9bd5; }
+body.theme-blue .note-input:focus { border-color: #5b9bd5; }
+
+/* --- 浅黄 --- */
+body.theme-yellow {
+  --primary: #f0c040;
+  --primary-dark: #d4a830;
+  --primary-light: #fffde7;
+  --primary-bg: #fffef5;
+  --sidebar-bg: #f0c040;
+  --sidebar-text: #4a3800;
+  --sidebar-hover: rgba(0,0,0,0.08);
+  --sidebar-active: rgba(0,0,0,0.15);
+}
+body.theme-yellow .sidebar {
+  background: linear-gradient(180deg, #ffe082 0%, #f0c040 40%, #d4a830 100%) !important;
+  box-shadow: 2px 0 24px rgba(240,192,64,0.2);
+  color: #4a3800;
+}
+body.theme-yellow .sidebar-title { color: #4a3800; }
+body.theme-yellow .sidebar-title::placeholder { color: rgba(74,56,0,0.4); }
+body.theme-yellow .nav-item { color: #4a3800; }
+body.theme-yellow .sidebar-theme-bar { border-top-color: rgba(0,0,0,0.1); }
+body.theme-yellow .dandelion-theme-btn { color: #4a3800; background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.15); }
+body.theme-yellow .dandelion-theme-btn:hover { background: rgba(0,0,0,0.15); }
+body.theme-yellow .footer-btn { color: #4a3800; background: rgba(0,0,0,0.1); }
+body.theme-yellow .footer-btn:hover { background: rgba(0,0,0,0.2); }
+body.theme-yellow .fab {
+  background: linear-gradient(135deg, #ffe082, #f0c040);
+  box-shadow: 0 4px 20px rgba(240,192,64,0.4);
+}
+body.theme-yellow .login-overlay {
+  background: linear-gradient(135deg, #fffde7 0%, #fff9c4 50%, #fff176 100%);
+}
+body.theme-yellow .month-fold-header { border-left-color: #f0c040; }
+body.theme-yellow .date-group-header { background: #fffde7; border-left-color: #f0c040; }
+body.theme-yellow .date-group-date { color: #d4a830; }
+body.theme-yellow .today-badge { background: #f0c040; color: #4a3800; }
+body.theme-yellow .quick-amounts button { color: #c09030; }
+body.theme-yellow .quick-amounts button:hover { background: #f0c040; border-color: #f0c040; color: #4a3800; }
+body.theme-yellow .amount-input:focus { border-color: #f0c040; box-shadow: 0 0 0 3px rgba(240,192,64,0.1); }
+body.theme-yellow .type-btn:hover { border-color: #f0c040; }
+body.theme-yellow .cat-btn:hover { border-color: #f0c040; box-shadow: 0 4px 12px rgba(240,192,64,0.12); }
+body.theme-yellow .cat-btn.active { border-color: #f0c040; background: #fffde7; box-shadow: 0 0 0 3px rgba(240,192,64,0.12); }
+body.theme-yellow .btn-save { background: #f0c040; color: #4a3800; }
+body.theme-yellow .btn-save:hover { background: #d4a830; color: #4a3800; }
+body.theme-yellow .record-note-tag { color: #c09030; background: #fffde7; }
+body.theme-yellow .mood-btn:hover { border-color: #f0c040; }
+body.theme-yellow .mood-btn.selected { border-color: #f0c040; background: #fffde7; box-shadow: 0 0 0 3px rgba(240,192,64,0.15); }
+body.theme-yellow .stat-val { color: #d4a830; }
+body.theme-yellow .diary-item:hover { border-color: #f0c040; }
+body.theme-yellow .login-dot.filled { border-color: #f0c040; background: #f0c040; box-shadow: 0 0 0 4px rgba(240,192,64,0.15); }
+body.theme-yellow .pwd-dot.filled { border-color: #f0c040; background: #f0c040; box-shadow: 0 0 0 4px rgba(240,192,64,0.15); }
+body.theme-yellow .keypad-btn:hover { background: #fffde7; color: #f0c040; }
+body.theme-yellow .keypad-btn:active { background: #f0c040; color: #4a3800; }
+body.theme-yellow .filter-bar select:focus { border-color: #f0c040; }
+body.theme-yellow .chart-controls select:focus { border-color: #f0c040; }
+body.theme-yellow .modal-input:focus { border-color: #f0c040; }
+body.theme-yellow .diary-textarea:focus { border-color: #f0c040; }
+body.theme-yellow .note-input:focus { border-color: #f0c040; }
+body.theme-yellow .limit-progress-fill { background: #f0c040; }
+body.theme-yellow .ps-val { color: #d4a830; }
+
+/* ================================================================
+   超限顶部横幅
+   ================================================================ */
+.overlimit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(90deg, rgba(231,76,60,0.12), rgba(231,76,60,0.06));
+  border-bottom: 2px solid #e74c3c;
+  color: #e74c3c;
+  font-size: 13px;
+  font-weight: 600;
+  animation: bannerIn 0.4s ease;
+  z-index: 99;
+  position: sticky;
+  top: 0;
+}
+@keyframes bannerIn {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.overlimit-banner-icon { font-size: 18px; }
+.overlimit-banner-text { flex: 1; text-align: center; }
+.overlimit-banner-close {
+  background: none; border: none; color: #e74c3c;
+  font-size: 16px; cursor: pointer; padding: 2px 6px;
+  border-radius: 4px;
+}
+.overlimit-banner-close:hover { background: rgba(231,76,60,0.1); }
+
+body.theme-pink .overlimit-banner {
+  background: linear-gradient(90deg, rgba(57,255,20,0.1), rgba(233,30,140,0.05));
+  border-bottom-color: #e91e8c;
+  color: #e91e8c;
+}
+body.theme-pink .overlimit-banner-close { color: #e91e8c; }
+
+/* ================================================================
+   日志当月汇总
+   ================================================================ */
+.diary-month-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--primary-bg);
+  border-radius: var(--radius-sm);
+}
+.diary-summary-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.diary-summary-tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 10px;
+  background: #fff;
+  border-radius: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+body.theme-pink .diary-summary-tag {
+  background: #222;
+  color: #ccc;
+}
+
+/* ================================================================
+   响应式
+   ================================================================ */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); width: 220px; min-width: 220px; }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; }
+  .menu-toggle { display: block; }
+  .page-body { padding: 14px 14px 120px; }
+  .info-cards { grid-template-columns: 1fr; }
+  .info-cards.three-cards { grid-template-columns: 1fr 1fr; }
+  .cat-grid { grid-template-columns: repeat(4, 1fr); }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .dandelion-theme-btn { padding: 7px 10px; font-size: 11px; }
+  .dandelion-flower { font-size: 60px; }
+  .fab { bottom: 22px; right: 20px; }
+}
+
+@media (max-width: 400px) {
+  .cat-grid { grid-template-columns: repeat(3, 1fr); }
+  .info-cards.three-cards { grid-template-columns: 1fr; }
+}
+
+/* ========== 登录页底部提示 ========== */
+.login-footer-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.login-footer-hint b {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ========== 默认密码提示条（主界面底部） ========== */
+.default-pwd-tip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #fff3e8, #ffe8cc);
+  border-top: 2px solid var(--primary);
+  font-size: 13px;
+  color: var(--primary-dark);
+  animation: slideUp 0.3s ease;
+}
+.default-pwd-tip b {
+  color: var(--primary);
+  font-weight: 700;
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.default-pwd-tip button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.default-pwd-tip button:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--text);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+</style>
+</head>
+<body>
+
+  <!-- ========== 登录页 ========== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-icon">📒</div>
+      <h2 class="login-title">我的账本</h2>
+      <p class="login-sub">使用邮箱登录</p>
+
+      <div id="loginStepForm" style="display:block">
+        <input type="email" id="loginEmail" class="modal-input" placeholder="请输入邮箱" style="margin-bottom:10px;text-align:center">
+        <input type="password" id="loginPassword" class="modal-input" placeholder="请输入密码（不少于6位）" style="margin-bottom:10px;text-align:center">
+        <p class="login-error" id="loginError"></p>
+        <button class="btn-save" onclick="doLogin()" style="width:100%;padding:12px;margin-bottom:8px;font-size:16px;background:#333">登 录</button>
+        <button class="btn-save" onclick="doRegister()" style="width:100%;padding:12px;font-size:16px;background:#333">注 册</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 主容器：左右分栏 ========== -->
+  <div class="app-shell" id="appWrapper" style="display:none">
+
+    <!-- ========== 左侧橙色导航栏 ========== -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">📒</div>
+        <input type="text" id="sidebarTitle" class="sidebar-title" value="我的账本" maxlength="10"
+               placeholder="点击更改名称"
+               onblur="saveSidebarTitle()" onkeydown="if(event.key==='Enter')this.blur()">
+      </div>
+      <div class="sidebar-user-info" id="sidebarUserInfo">
+        <span class="sidebar-user-icon">👤</span>
+        <span class="sidebar-user-name" id="sidebarUserName"></span>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="nav-item active" data-page="home" onclick="switchPage('home')">
+          <span class="nav-icon">💰</span><span class="nav-label">记账</span>
+        </li>
+        <li class="nav-item" data-page="records" onclick="switchPage('records')">
+          <span class="nav-icon">📋</span><span class="nav-label">流水</span>
+        </li>
+        <li class="nav-item" data-page="charts" onclick="switchPage('charts')">
+          <span class="nav-icon">📊</span><span class="nav-label">分析</span>
+        </li>
+        <li class="nav-item" data-page="diary" onclick="switchPage('diary')">
+          <span class="nav-icon">📝</span><span class="nav-label">日志</span>
+        </li>
+      </ul>
+      <div class="sidebar-theme-bar" id="dandelionThemeBar">
+        <button class="dandelion-theme-btn active" data-theme="pink" onclick="switchDandelionTheme('pink')">🌸 玫红</button>
+        <button class="dandelion-theme-btn" data-theme="blue" onclick="switchDandelionTheme('blue')">🩵 浅蓝</button>
+        <button class="dandelion-theme-btn" data-theme="yellow" onclick="switchDandelionTheme('yellow')">🌼 浅黄</button>
+      </div>
+      <div class="sidebar-footer">
+        <button class="footer-btn" onclick="doLogout()" title="退出登录">🚪</button>
+        <button class="footer-btn" onclick="exportAll()" title="导出数据">📤</button>
+        <button class="footer-btn" onclick="openChangePwdModal()" title="修改日志密码">📑</button>
+      </div>
+    </nav>
+
+    <!-- ========== 右侧主内容区 ========== -->
+    <main class="main-content" id="mainContent">
+
+      <!-- 超限顶部横幅 -->
+      <div class="overlimit-banner" id="overlimitBanner" style="display:none">
+        <span class="overlimit-banner-icon">⚠️</span>
+        <span class="overlimit-banner-text" id="overlimitBannerText"></span>
+        <button class="overlimit-banner-close" onclick="dismissOverlimitBanner()">✕</button>
+      </div>
+
+      <!-- ========== 页面1：记账首页 ========== -->
+      <section class="page active" id="page-home">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title" id="headerTitle">我的账本</h1>
+        </header>
+        <div class="page-body">
+          <!-- 卡片区：今日支出 + 今日限额 + 月度限额 -->
+          <div class="info-cards three-cards">
+            <div class="info-card expense-card">
+              <div class="info-card-icon">💸</div>
+              <div class="info-card-body">
+                <span class="info-card-label">今日支出</span>
+                <span class="info-card-value expense" id="todayExpense">¥0.00</span>
+              </div>
+              <span class="info-card-badge" id="todayCount">0笔</span>
+            </div>
+            <div class="info-card limit-card" onclick="openLimitModal()">
+              <div class="info-card-icon">🎯</div>
+              <div class="info-card-body">
+                <span class="info-card-label">今日限额</span>
+                <span class="info-card-value" id="dailyLimitDisplay">未配置</span>
+              </div>
+              <div class="limit-progress-wrap">
+                <div class="limit-progress-bar"><div class="limit-progress-fill" id="dailyLimitFill"></div></div>
+                <span class="limit-remain" id="dailyLimitRemain"></span>
+              </div>
+            </div>
+            <div class="info-card limit-card" onclick="openMonthlyLimitModal()">
+              <div class="info-card-icon">📊</div>
+              <div class="info-card-body">
+                <span class="info-card-label">月度限额</span>
+                <span class="info-card-value" id="monthlyLimitDisplay">未配置</span>
+              </div>
+              <div class="limit-progress-wrap">
+                <div class="limit-progress-bar"><div class="limit-progress-fill" id="monthlyLimitFill"></div></div>
+                <span class="limit-remain" id="monthlyLimitRemain"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 蒲公英主题装饰 -->
+          <div class="dandelion-area" id="dandelionArea">
+            <div class="dandelion-flower" id="dandelionFlower">🌼</div>
+            <div class="dandelion-stem"></div>
+            <div class="dandelion-leaves"></div>
+            <div class="dandelion-cyber-lines" id="dandelionCyberLines"></div>
+          </div>
+
+          <!-- 快速记账 -->
+          <div class="quick-add-card">
+            <div class="quick-add-header">
+              <h2>⚡ 快速记账</h2>
+              <span class="date-pick">📆 <input type="date" id="recordDate" class="date-input"></span>
+            </div>
+            <div class="type-switch">
+              <button class="type-btn active" data-type="expense" onclick="setType('expense')">💸 支出</button>
+              <button class="type-btn" data-type="income" onclick="setType('income')">💰 收入</button>
+            </div>
+            <div class="cat-grid" id="catGrid"></div>
+            <div class="amount-area" id="amountArea" style="display:none">
+              <span class="selected-cat" id="selCat"></span>
+              <input type="number" id="amountInput" class="amount-input" placeholder="输入金额" step="0.01" min="0.01">
+              <input type="text" id="noteInput" class="note-input" placeholder="添加备注..." maxlength="50">
+              <div class="amount-btns">
+                <button class="btn-cancel" onclick="cancelAdd()">取消</button>
+                <button class="btn-save" onclick="confirmAdd()">✓ 记账</button>
+              </div>
+            </div>
+            <div class="quick-amounts" id="quickAmounts" style="display:none">
+              <span>快捷：</span>
+              <button onclick="setAmount(3)">¥3</button><button onclick="setAmount(5)">¥5</button>
+              <button onclick="setAmount(8)">¥8</button><button onclick="setAmount(12)">¥12</button>
+              <button onclick="setAmount(15)">¥15</button><button onclick="setAmount(20)">¥20</button>
+              <button onclick="setAmount(50)">¥50</button><button onclick="setAmount(100)">¥100</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 页面2：流水（按月折叠） ========== -->
+      <section class="page" id="page-records">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title">📋 流水记录</h1>
+        </header>
+        <div class="page-body">
+          <div class="filter-bar">
+            <select id="filterTypeR" onchange="renderMonthFold()">
+              <option value="all">全部类型</option><option value="expense">💸 支出</option><option value="income">💰 收入</option>
+            </select>
+            <button id="sortBtnR" onclick="toggleSortR()">🔽 最新</button>
+          </div>
+          <div class="period-summary" id="periodSummary"></div>
+          <div class="month-fold-list" id="monthFoldList">
+            <div class="empty-state">📭 暂无记录，快去记一笔吧~</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 页面3：分析 ========== -->
+      <section class="page" id="page-charts">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title">📊 数据分析</h1>
+        </header>
+        <div class="page-body">
+          <div class="chart-controls">
+            <select id="chartMonth" onchange="renderCharts()"></select>
+          </div>
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><span class="stat-val" id="statExpense">¥0</span><span class="stat-lbl">总支出</span></div>
+            <div class="stat-card"><span class="stat-val income" id="statIncome">¥0</span><span class="stat-lbl">总收入</span></div>
+            <div class="stat-card"><span class="stat-val" id="statBalance">¥0</span><span class="stat-lbl">结余</span></div>
+            <div class="stat-card"><span class="stat-val" id="statAvg">¥0</span><span class="stat-lbl">日均支出</span></div>
+          </div>
+          <div class="chart-card"><h3>🍩 缤纷消费占比</h3><div class="chart-wrap"><canvas id="pieChart"></canvas></div></div>
+          <div class="chart-card"><h3>📈 每日收支趋势</h3><div class="chart-wrap"><canvas id="lineChart"></canvas></div></div>
+          <div class="chart-card"><h3>📊 各类别金额排行</h3><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- ========== 页面4：日志（点击日期需密码） ========== -->
+      <section class="page" id="page-diary">
+        <header class="page-header">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h1 class="page-title">📝 心情日志</h1>
+        </header>
+        <div class="page-body">
+          <div class="card diary-card">
+            <h3>📝 今日心情日志</h3>
+            <p class="diary-date" id="diaryDate"></p>
+            <div class="mood-picker" id="moodPicker">
+              <button class="mood-btn" data-mood="😄">😄</button><button class="mood-btn" data-mood="😊">😊</button>
+              <button class="mood-btn" data-mood="😐">😐</button><button class="mood-btn" data-mood="😔">😔</button>
+              <button class="mood-btn" data-mood="😤">😤</button><button class="mood-btn" data-mood="🥰">🥰</button>
+            </div>
+            <textarea class="diary-textarea" id="diaryContent" placeholder="记录今天的心情和感受..." maxlength="500"></textarea>
+            <button class="btn-save btn-full" onclick="saveDiary()">💾 保存日志</button>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:12px">📖 历史日志（点击日期查看）</h3>
+            <div class="diary-month-summary" id="diaryMonthSummary"></div>
+            <div class="diary-list" id="diaryList">
+              <div class="empty-state">📭 还没有写过日志哦~</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========== 弹窗：限额设置 ========== -->
+  <div class="modal-overlay" id="limitModal">
+    <div class="modal">
+      <div class="modal-header"><h3>🎯 每日限额设置</h3><button class="modal-close" onclick="closeModal('limitModal')">✕</button></div>
+      <div class="modal-body">
+        <label>每日支出上限（元）</label>
+        <input type="number" id="dailyLimitInput" class="modal-input" placeholder="例如：50" step="0.01" min="0">
+        <button class="btn-save btn-full" onclick="saveDailyLimit()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：月度限额 ========== -->
+  <div class="modal-overlay" id="monthlyLimitModal">
+    <div class="modal">
+      <div class="modal-header"><h3>📊 月度限额设置</h3><button class="modal-close" onclick="closeModal('monthlyLimitModal')">✕</button></div>
+      <div class="modal-body">
+        <label>月度支出上限（元）</label>
+        <input type="number" id="monthlyLimitInput" class="modal-input" placeholder="例如：2000" step="0.01" min="0">
+        <button class="btn-save btn-full" onclick="saveMonthlyLimit()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：日志密码验证 ========== -->
+  <div class="modal-overlay" id="diaryPwdModal">
+    <div class="modal">
+      <div class="modal-header"><h3>🔐 日志密码验证</h3><button class="modal-close" onclick="closeModal('diaryPwdModal')">✕</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-secondary);text-align:center">请输入4位密码查看 <b id="diaryPwdDate"></b> 的日志</p>
+        <div class="pwd-dots" id="diaryPwdDots">
+          <span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span>
+        </div>
+        <p class="login-error" id="diaryPwdError"></p>
+        <div class="login-keypad" id="diaryPwdKeypad"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：日志内容查看 ========== -->
+  <div class="modal-overlay" id="diaryViewModal">
+    <div class="modal">
+      <div class="modal-header"><h3>📖 日志详情</h3><button class="modal-close" onclick="closeModal('diaryViewModal')">✕</button></div>
+      <div class="modal-body" id="diaryViewContent"></div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：修改密码 ========== -->
+  <div class="modal-overlay" id="changePwdModal">
+    <div class="modal">
+      <div class="modal-header"><h3>📑 修改日志密码</h3><button class="modal-close" onclick="closeModal('changePwdModal')">✕</button></div>
+      <div class="modal-body" id="changePwdBody"></div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：超限警告 ========== -->
+  <div class="modal-overlay" id="overLimitModal">
+    <div class="modal overlimit-modal">
+      <div class="modal-header" style="border-bottom-color:#fdecea">
+        <h3 style="color:#e74c3c">⚠️ 消费超限警告</h3>
+        <button class="modal-close" onclick="closeModal('overLimitModal')">✕</button>
+      </div>
+      <div class="modal-body" id="overLimitContent"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+
+
+  <!-- FAB -->
+  <button class="fab" id="fabBtn" style="display:none" onclick="scrollToAdd()">＋</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+          onload="window._chartReady=true"
+          onerror="console.warn('Chart.js CDN 加载失败');window._chartReady=false;">
+  </script>
+  <script>// ================================================================
+//  我的账本 - 核心逻辑 v6 (Supabase Auth 邮箱登录版)
+//  功能：邮箱登录 | 日/月限额超限震动警告
+//        按月折叠流水 | 缤纷图表 | 日志独立密码 | 云端同步
+// ================================================================
+
+// ============ Supabase 配置 ============
+var SUPABASE_URL = 'https://bmfwgxfrdtjfourwtwhl.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_FPbyCVlUq7Qy4nKUtscm8g_PhqBS01t';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============ 全局状态 ============
+var currentUser = null;
+var records = [];
+var diaries = [];
+var currentType = 'expense';
+var currentCategory = null;
+var currentPageName = 'home';
+var currentSortR = 'desc';
+var diaryPassword = null;
+
+// ============ 类别定义 ============
+var EXPENSE_CATS = [
+  { id: 'breakfast', name: '早餐', icon: '🥕', color: '#FF6384' },
+  { id: 'lunch', name: '午餐', icon: '🍄', color: '#36A2EB' },
+  { id: 'dinner', name: '晚餐', icon: '🍅', color: '#FFCE56' },
+  { id: 'snacks', name: '零食', icon: '🍖', color: '#4BC0C0' },
+  { id: 'shopping', name: '购物', icon: '🛅', color: '#9966FF' },
+  { id: 'transport', name: '交通', icon: '🚞', color: '#FF9F40' },
+  { id: 'entertain', name: '娱乐', icon: '🎃', color: '#C9CBCF' },
+  { id: 'study', name: '学习', icon: '📎', color: '#7BC8A4' },
+  { id: 'phone', name: '话费', icon: '📫', color: '#E8C3B9' },
+  { id: 'medical', name: '医疗', icon: '💪', color: '#5B9BD5' },
+  { id: 'utilities', name: '水电', icon: '💕', color: '#ED7D31' },
+  { id: 'other', name: '其他', icon: '📦', color: '#A5A5A5' }
+];
+
+var INCOME_CATS = [
+  { id: 'salary', name: '工资', icon: '💰', color: '#07c160' },
+  { id: 'allowance', name: '零花钱', icon: '💰', color: '#1989fa' },
+  { id: 'parttime', name: '兼职', icon: '💰', color: '#ff6b6b' },
+  { id: 'redpacket', name: '红包', icon: '🧧', color: '#e74c3c' },
+  { id: 'refund', name: '退款', icon: '↩️', color: '#9b59b6' },
+  { id: 'income_other', name: '其他', icon: '💰', color: '#f39c12' }
+];
+
+var EXPENSE_MAP = {};
+EXPENSE_CATS.forEach(function(c) { EXPENSE_MAP[c.id] = c; });
+var INCOME_MAP = {};
+INCOME_CATS.forEach(function(c) { INCOME_MAP[c.id] = c; });
+
+var EXPENSE_COLORS = [
+  '#FF6384','#FF9F40','#FFCE56','#36A2EB','#4BC0C0',
+  '#9966FF','#7BC8A4','#E8C3B9','#5B9BD5','#ED7D31',
+  '#C9CBCF','#A5A5A5'
+];
+
+// ============ Supabase Auth 登录/注册 ============
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pwd = document.getElementById('loginPassword').value;
+  var errEl = document.getElementById('loginError');
+  if (!email || !pwd) { errEl.textContent = '请输入邮箱和密码'; return; }
+  if (pwd.length < 6) { errEl.textContent = '密码不能少于6位'; return; }
+  errEl.textContent = '登录中...';
+
+  var { data, error } = await sb.auth.signInWithPassword({ email: email, password: pwd });
+  if (error) {
+    errEl.textContent = '❌ ' + (error.message || '登录失败');
+    return;
+  }
+  await onAuthSuccess(data.user);
+}
+
+async function doRegister() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pwd = document.getElementById('loginPassword').value;
+  var errEl = document.getElementById('loginError');
+  if (!email || !pwd) { errEl.textContent = '请输入邮箱和密码'; return; }
+  if (pwd.length < 6) { errEl.textContent = '密码不能少于6位'; return; }
+  errEl.textContent = '注册中...';
+
+  var { data, error } = await sb.auth.signUp({ email: email, password: pwd });
+  if (error) {
+    errEl.textContent = '❌ ' + (error.message || '注册失败');
+    return;
+  }
+  // 如果禁用了邮箱验证，直接登录成功
+  if (data.user) {
+    showToast('✅ 注册成功！');
+    await onAuthSuccess(data.user);
+  } else {
+    showToast('📧 请检查邮箱确认注册');
+    errEl.textContent = '';
+  }
+}
+
+async function onAuthSuccess(user) {
+  currentUser = user.id;
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appWrapper').style.display = 'flex';
+  document.getElementById('fabBtn').style.display = 'flex';
+  document.getElementById('sidebarUserName').textContent = user.email;
+  document.getElementById('sidebarUserInfo').style.display = 'flex';
+
+  // 初始化日志密码
+  var ds = localStorage.getItem('ledger_' + currentUser + '_diary_pwd');
+  if (!ds) {
+    diaryPassword = '1234';
+    localStorage.setItem('ledger_' + currentUser + '_diary_pwd', diaryPassword);
+  } else {
+    diaryPassword = ds;
+  }
+
+  showToast('✅ 欢迎回来！');
+  await loadUserData();
+  initApp();
+}
+
+async function doLogout() {
+  saveRecords();
+  saveDiaryData();
+  await sb.auth.signOut();
+  currentUser = null;
+  records = [];
+  diaries = [];
+  document.getElementById('appWrapper').style.display = 'none';
+  document.getElementById('fabBtn').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('sidebarUserInfo').style.display = 'none';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+  showToast('👋 已退出登录');
+}
+
+// 从云端加载用户数据（优先本地缓存，秒开；后台同步云端）
+async function loadUserData() {
+  if (!currentUser) return;
+
+  // 1. 先从本地缓存立即加载（秒开）
+  try { records = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_records')) || []; } catch(e) { records = []; }
+  try { diaries = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_diaries')) || []; } catch(e) { diaries = []; }
+
+  // 2. 也尝试从旧格式 key 迁移
+  if (records.length === 0) {
+    try { records = JSON.parse(localStorage.getItem('ledger_records_' + currentUser)) || []; } catch(e) {}
+  }
+  if (diaries.length === 0) {
+    try { diaries = JSON.parse(localStorage.getItem('ledger_diaries_' + currentUser)) || []; } catch(e) {}
+  }
+
+  // 3. 后台异步从云端同步（不阻塞页面显示）
+  syncUserDataFromCloud();
+}
+
+async function syncUserDataFromCloud() {
+  if (!currentUser) return;
+  try {
+    // ===== 智能合并记录：云端+本地取并集，按 createdAt 去重 =====
+    var { data: recData, error: recErr } = await sb.from('records').select('*').eq('user_id', currentUser).order('created_at', { ascending: false });
+    var cloudRecords = [];
+    if (!recErr && recData && recData.length > 0) {
+      cloudRecords = recData.map(function(r) { return r.data; });
+    }
+
+    // 合并：用 id 去重，优先保留 createdAt 更晚的版本
+    var mergedMap = {};
+    // 先放本地
+    records.forEach(function(r) {
+      if (r && r.id) mergedMap[r.id] = r;
+    });
+    // 再放云端（覆盖同 id 的旧版本）
+    cloudRecords.forEach(function(r) {
+      if (r && r.id) {
+        var local = mergedMap[r.id];
+        if (!local || (r.updatedAt && local.updatedAt && r.updatedAt > local.updatedAt) || !local.updatedAt) {
+          mergedMap[r.id] = r;
+        }
+      }
+    });
+    var merged = Object.values(mergedMap);
+    merged.sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+
+    if (merged.length !== records.length || cloudRecords.length > 0) {
+      records = merged;
+      localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
+      // 如果云端数据比本地少，把本地多的同步上去
+      if (merged.length > cloudRecords.length) {
+        await saveRecordsToCloud();
+      }
+    } else if (records.length > 0 && cloudRecords.length === 0) {
+      // 本地有数据但云端没有，迁移到云端
+      await saveRecordsToCloud();
+    }
+
+    // ===== 智能合并日记 =====
+    var { data: diaryData, error: diaryErr } = await sb.from('diaries').select('*').eq('user_id', currentUser).order('created_at', { ascending: false });
+    var cloudDiaries = [];
+    if (!diaryErr && diaryData && diaryData.length > 0) {
+      cloudDiaries = diaryData.map(function(d) { return d.data; });
+    }
+
+    var diaryMap = {};
+    diaries.forEach(function(d) {
+      if (d && d.date) diaryMap[d.date] = d;
+    });
+    cloudDiaries.forEach(function(d) {
+      if (d && d.date) {
+        var local = diaryMap[d.date];
+        if (!local || (d.updatedAt && local.updatedAt && d.updatedAt > local.updatedAt) || !local.updatedAt) {
+          diaryMap[d.date] = d;
+        }
+      }
+    });
+    var mergedDiaries = Object.values(diaryMap);
+    mergedDiaries.sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+
+    if (mergedDiaries.length !== diaries.length || cloudDiaries.length > 0) {
+      diaries = mergedDiaries;
+      localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
+      if (mergedDiaries.length > cloudDiaries.length) {
+        await saveDiaryDataToCloud();
+      }
+    } else if (diaries.length > 0 && cloudDiaries.length === 0) {
+      await saveDiaryDataToCloud();
+    }
+
+    // ===== 同步设置（云端优先） =====
+    var { data: setData } = await sb.from('user_settings').select('*').eq('user_id', currentUser);
+    if (setData && setData.length > 0) {
+      var settings = {};
+      setData.forEach(function(s) { settings[s.key] = s.value; });
+      localStorage.setItem('ledger_' + currentUser + '_settings', JSON.stringify(settings));
+    }
+
+    // 同步后刷新页面（避免频繁全量刷新，只刷新当前页）
+    if (currentPageName === 'records') renderMonthFold();
+    if (currentPageName === 'diary') renderDiaryPage();
+    if (currentPageName === 'home') renderTodaySummary();
+    renderDiaryList();
+  } catch(e) {
+    console.log('云端同步失败（不影响本地使用）:', e.message);
+  }
+}
+
+// 保存记录到云端（使用 upsert，不会先删除旧数据）
+async function saveRecordsToCloud() {
+  if (!currentUser) return;
+  // 始终先保存本地缓存
+  localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
+  try {
+    var rows = records.map(function(r) {
+      return { user_id: currentUser, record_id: r.id, data: r, created_at: r.createdAt, updated_at: r.updatedAt || r.createdAt };
+    });
+    if (rows.length > 0) {
+      for (var i = 0; i < rows.length; i += 100) {
+        var batch = rows.slice(i, i + 100);
+        var { error } = await sb.from('records').upsert(batch, { onConflict: 'record_id' });
+        if (error) throw error;
+      }
+    }
+  } catch(e) {
+    console.log('保存记录到云端失败:', e.message);
+    // 本地数据不受影响
+  }
+}
+
+// 保存日记到云端（使用 upsert，不会先删除旧数据）
+async function saveDiaryDataToCloud() {
+  if (!currentUser) return;
+  // 始终先保存本地缓存
+  localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
+  try {
+    var rows = diaries.map(function(d) {
+      return { user_id: currentUser, diary_date: d.date, data: d, created_at: d.createdAt, updated_at: d.updatedAt || d.createdAt };
+    });
+    if (rows.length > 0) {
+      for (var i = 0; i < rows.length; i += 100) {
+        var batch = rows.slice(i, i + 100);
+        var { error } = await sb.from('diaries').upsert(batch, { onConflict: 'diary_date' });
+        if (error) throw error;
+      }
+    }
+  } catch(e) {
+    console.log('保存日记到云端失败:', e.message);
+    // 本地数据不受影响
+  }
+}
+
+// 保存用户设置到云端
+async function saveUserSetting(key, value) {
+  if (!currentUser) return;
+  try {
+    var { data: existing } = await sb.from('user_settings').select('*').eq('user_id', currentUser).eq('key', key);
+    if (existing && existing.length > 0) {
+      await sb.from('user_settings').update({ value: value }).eq('user_id', currentUser).eq('key', key);
+    } else {
+      await sb.from('user_settings').insert({ user_id: currentUser, key: key, value: value });
+    }
+  } catch(e) {
+    console.log('保存设置到云端失败:', e.message);
+  }
+  // 同时保存到本地
+  var settings = {};
+  try { settings = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_settings')) || {}; } catch(e2) {}
+  settings[key] = value;
+  localStorage.setItem('ledger_' + currentUser + '_settings', JSON.stringify(settings));
+}
+
+// 从云端获取用户设置
+async function getUserSetting(key) {
+  if (!currentUser) return null;
+  try {
+    var { data, error } = await sb.from('user_settings').select('value').eq('user_id', currentUser).eq('key', key);
+    if (!error && data && data.length > 0) return data[0].value;
+  } catch(e) {}
+  // 回退到本地
+  var settings = {};
+  try { settings = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_settings')) || {}; } catch(e2) {}
+  return settings[key] || null;
+}
+
+// ============ 数据持久化接口（兼容旧代码） ============
+function saveRecords() {
+  if (!currentUser) return;
+  localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
+  saveRecordsToCloud();
+}
+
+function saveDiaryData() {
+  if (!currentUser) return;
+  localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
+  saveDiaryDataToCloud();
+}
+
+function getDailyLimit() {
+  if (!currentUser) return 0;
+  var local = parseFloat(localStorage.getItem('ledger_' + currentUser + '_daily_limit')) || 0;
+  return local;
+}
+
+function setDailyLimit(v) {
+  if (!currentUser) return;
+  localStorage.setItem('ledger_' + currentUser + '_daily_limit', v);
+  saveUserSetting('daily_limit', String(v));
+}
+
+function getMonthlyLimit() {
+  if (!currentUser) return 0;
+  return parseFloat(localStorage.getItem('ledger_' + currentUser + '_monthly_limit')) || 0;
+}
+
+function setMonthlyLimit(v) {
+  if (!currentUser) return;
+  localStorage.setItem('ledger_' + currentUser + '_monthly_limit', v);
+  saveUserSetting('monthly_limit', String(v));
+}
+
+function getUserStore(field) {
+  return localStorage.getItem('ledger_' + currentUser + '_' + field);
+}
+
+function setUserStore(field, val) {
+  localStorage.setItem('ledger_' + currentUser + '_' + field, val);
+  saveUserSetting(field, val);
+}
+
+// ============ 工具函数 ============
+function fmtMoney(v) { return '\u00A5' + (parseFloat(v) || 0).toFixed(2); }
+function getToday() {
+  var d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function getCurrentMonth() {
+  var d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1);
+}
+function getMonthKey(ds) { return ds ? ds.substring(0,7) : ''; }
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function() { t.classList.remove('show'); }, 1800);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('show')) {
+    e.target.classList.remove('show');
+  }
+});
+
+function vibrateDevice(pattern) {
+  if (navigator.vibrate) {
+    try { navigator.vibrate(pattern); } catch(e) {}
+  }
+}
+
+
+
+// ============ 侧栏标题 ============
+async function saveSidebarTitle() {
+  if (!currentUser) return;
+  var v = document.getElementById('sidebarTitle').value.trim();
+  if (v) {
+    setUserStore('title', v);
+    document.getElementById('headerTitle').textContent = v;
+  }
+}
+async function loadSidebarTitle() {
+  if (!currentUser) return;
+  var s = getUserStore('title') || '我的账本';
+  document.getElementById('sidebarTitle').value = s;
+  document.getElementById('headerTitle').textContent = s;
+}
+
+// ============ 页面切换 ============
+function switchPage(page) {
+  currentPageName = page;
+  document.querySelectorAll('.nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var pg = document.getElementById('page-' + page);
+  if (!pg) return;
+  pg.classList.add('active');
+
+  if (page === 'diary') renderDiaryPage();
+  else if (page === 'home') refreshAll();
+  else if (page === 'records') { renderMonthFold(); }
+  else if (page === 'charts') { populateChartMonth(); renderCharts(); }
+
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar && window.innerWidth <= 768) sidebar.classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ============ 蒲公英主题切换 ============
+var currentDandelionTheme = 'pink';
+
+function switchDandelionTheme(theme) {
+  currentDandelionTheme = theme;
+  var root = document.documentElement;
+  var flower = document.getElementById('dandelionFlower');
+  var cyberLines = document.getElementById('dandelionCyberLines');
+
+  document.body.classList.remove('theme-pink', 'theme-blue', 'theme-yellow');
+
+  document.querySelectorAll('.dandelion-theme-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.theme === theme);
+  });
+
+  if (cyberLines) cyberLines.style.display = 'none';
+
+  if (theme === 'pink') {
+    document.body.classList.add('theme-pink');
+    root.style.setProperty('--dandelion-primary', '#e91e8c');
+    root.style.setProperty('--dandelion-accent', '#39ff14');
+    root.style.setProperty('--dandelion-light', '#2d0a1e');
+    root.style.setProperty('--dandelion-bg', '#1a0a14');
+    root.style.setProperty('--dandelion-flower', '#e91e8c');
+    if (flower) flower.textContent = '🌸';
+    if (cyberLines) cyberLines.style.display = 'block';
+    showToast('🌸 玫红主题');
+  } else if (theme === 'blue') {
+    document.body.classList.add('theme-blue');
+    root.style.setProperty('--dandelion-primary', '#5b9bd5');
+    root.style.setProperty('--dandelion-accent', '#87ceeb');
+    root.style.setProperty('--dandelion-light', '#e8f4fd');
+    root.style.setProperty('--dandelion-bg', '#f0f8ff');
+    root.style.setProperty('--dandelion-flower', '#5b9bd5');
+    if (flower) flower.textContent = '🩵';
+    showToast('🩵 浅蓝主题');
+  } else if (theme === 'yellow') {
+    document.body.classList.add('theme-yellow');
+    root.style.setProperty('--dandelion-primary', '#f0c040');
+    root.style.setProperty('--dandelion-accent', '#ffeaa7');
+    root.style.setProperty('--dandelion-light', '#fffde7');
+    root.style.setProperty('--dandelion-bg', '#fffef5');
+    root.style.setProperty('--dandelion-flower', '#f0c040');
+    if (flower) flower.textContent = '🌼';
+    showToast('🌼 浅黄主题');
+  }
+
+  if (currentUser) setUserStore('theme', theme);
+  if (currentPageName === 'charts') renderCharts();
+}
+
+function loadDandelionTheme() {
+  var saved = getUserStore('theme') || 'pink';
+  var cyberLines = document.getElementById('dandelionCyberLines');
+  if (saved === 'pink' && cyberLines) cyberLines.style.display = 'block';
+  switchDandelionTheme(saved);
+}
+
+// ============ 修改日志密码弹窗 ============
+var changePwdStep = 'diary';
+var changePwdTempOld = '';
+var changePwdTempNew = '';
+
+function openChangePwdModal() {
+  changePwdStep = 'diary';
+  changePwdTempOld = '';
+  changePwdTempNew = '';
+  document.getElementById('changePwdModal').classList.add('show');
+  startChangeDiaryPwd();
+}
+
+function renderChangePwdKeypad(elId, onPress) {
+  var pad = document.getElementById(elId);
+  if (!pad) return;
+  var nums = [1,2,3,4,5,6,7,8,9,'del',0,''];
+  pad.innerHTML = nums.map(function(n) {
+    if (n === '') return '<button class="keypad-btn empty"></button>';
+    if (n === 'del') return '<button class="keypad-btn del" onclick="' + onPress + '(\'del\')">⌫</button>';
+    return '<button class="keypad-btn" onclick="' + onPress + '(\'' + n + '\')">' + n + '</button>';
+  }).join('');
+}
+
+function startChangeDiaryPwd() {
+  changePwdStep = 'diary_old';
+  changePwdTempOld = '';
+  var body = document.getElementById('changePwdBody');
+  body.innerHTML =
+    '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:6px">请输入<b>当前</b>4位日志密码</p>' +
+    '<div class="pwd-dots" id="changeDiaryDots">' +
+    '<span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span>' +
+    '</div>' +
+    '<p class="login-error" id="changePwdError"></p>' +
+    '<div class="login-keypad" id="changePwdKeypad"></div>';
+  renderChangePwdKeypad('changePwdKeypad', 'changeDiaryPwdKeyPress');
+}
+
+function changeDiaryPwdKeyPress(key) {
+  var dots = document.querySelectorAll('#changeDiaryDots .pwd-dot');
+  var errEl = document.getElementById('changePwdError');
+
+  if (key === 'del') {
+    if (changePwdTempOld.length > 0) {
+      changePwdTempOld = changePwdTempOld.slice(0, -1);
+      dots[changePwdTempOld.length].classList.remove('filled', 'error');
+    }
+    errEl.textContent = '';
+    return;
+  }
+  if (changePwdTempOld.length >= 4) return;
+  changePwdTempOld += key;
+  dots[changePwdTempOld.length - 1].classList.add('filled');
+  errEl.textContent = '';
+
+  if (changePwdTempOld.length === 4) {
+    setTimeout(function() {
+      if (changePwdTempOld === diaryPassword) {
+        changePwdStep = 'diary_new';
+        changePwdTempNew = '';
+        var body = document.getElementById('changePwdBody');
+        body.innerHTML =
+          '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:6px">请输入<b>新</b>4位日志密码</p>' +
+          '<div class="pwd-dots" id="changeDiaryDots">' +
+          '<span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span>' +
+          '</div>' +
+          '<p class="login-error" id="changePwdError"></p>' +
+          '<div class="login-keypad" id="changePwdKeypad"></div>';
+        renderChangePwdKeypad('changePwdKeypad', 'changeDiaryNewKeyPress');
+      } else {
+        changePwdTempOld = '';
+        dots.forEach(function(d) { d.classList.add('error'); d.classList.remove('filled'); });
+        errEl.textContent = '❌ 密码错误';
+        vibrateDevice([100, 50, 100]);
+        setTimeout(function() {
+          dots.forEach(function(d) { d.classList.remove('error'); });
+          errEl.textContent = '';
+        }, 600);
+      }
+    }, 150);
+  }
+}
+
+function changeDiaryNewKeyPress(key) {
+  var dots = document.querySelectorAll('#changeDiaryDots .pwd-dot');
+  var errEl = document.getElementById('changePwdError');
+
+  if (key === 'del') {
+    if (changePwdTempNew.length > 0) {
+      changePwdTempNew = changePwdTempNew.slice(0, -1);
+      dots[changePwdTempNew.length].classList.remove('filled', 'error');
+    }
+    errEl.textContent = '';
+    return;
+  }
+  if (changePwdTempNew.length >= 4) return;
+  changePwdTempNew += key;
+  dots[changePwdTempNew.length - 1].classList.add('filled');
+  errEl.textContent = '';
+
+  if (changePwdTempNew.length === 4) {
+    setTimeout(function() {
+      diaryPassword = changePwdTempNew;
+      setUserStore('diary_pwd', diaryPassword);
+      closeModal('changePwdModal');
+      showToast('✅ 日志密码已更新');
+    }, 150);
+  }
+}
+
+// ============ 记账 ============
+function setType(type) {
+  currentType = type;
+  currentCategory = null;
+  cancelAdd();
+  document.querySelectorAll('.type-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.type === type);
+  });
+  renderCatGrid();
+}
+
+function renderCatGrid() {
+  var grid = document.getElementById('catGrid');
+  var cats = currentType === 'expense' ? EXPENSE_CATS : INCOME_CATS;
+  grid.innerHTML = cats.map(function(c) {
+    return '<button class="cat-btn" data-cat="' + c.id + '" onclick="startAdd(\'' + c.id + '\')">' +
+      '<span class="cat-icon">' + c.icon + '</span>' +
+      '<span class="cat-name">' + c.name + '</span></button>';
+  }).join('');
+}
+
+function startAdd(catId) {
+  currentCategory = catId;
+  var map = currentType === 'expense' ? EXPENSE_MAP : INCOME_MAP;
+  var cat = map[catId];
+  document.getElementById('selCat').innerHTML = cat.icon + ' ' + cat.name;
+  document.getElementById('amountArea').style.display = 'flex';
+  document.getElementById('quickAmounts').style.display = 'flex';
+  document.getElementById('amountInput').value = '';
+  document.getElementById('noteInput').value = '';
+  document.getElementById('amountInput').focus();
+  document.querySelectorAll('.cat-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.cat === catId);
+  });
+}
+
+function cancelAdd() {
+  currentCategory = null;
+  document.getElementById('amountArea').style.display = 'none';
+  document.getElementById('quickAmounts').style.display = 'none';
+  document.getElementById('amountInput').value = '';
+  document.getElementById('noteInput').value = '';
+  document.querySelectorAll('.cat-btn').forEach(function(b) { b.classList.remove('active'); });
+}
+
+function setAmount(val) {
+  document.getElementById('amountInput').value = val;
+  document.getElementById('amountInput').focus();
+}
+
+// ============ 超限检查与警告 ============
+function checkOverLimit(amount, recordDate) {
+  var today = getToday();
+  var currentMonth = getCurrentMonth();
+  var warnings = [];
+
+  var dl = getDailyLimit();
+  if (dl > 0) {
+    var todayExpense = records
+      .filter(function(r) { return r.date === today && r.type === 'expense'; })
+      .reduce(function(s, r) { return s + r.amount; }, 0);
+    if (todayExpense > dl) {
+      warnings.push({
+        type: 'daily',
+        limit: dl,
+        spent: todayExpense,
+        over: todayExpense - dl,
+        msg: '今日支出 <b>' + fmtMoney(todayExpense) + '</b> 已超过日限额 <b>' + fmtMoney(dl) + '</b>'
+      });
+    }
+  }
+
+  var ml = getMonthlyLimit();
+  if (ml > 0) {
+    var monthExpense = records
+      .filter(function(r) { return getMonthKey(r.date) === currentMonth && r.type === 'expense'; })
+      .reduce(function(s, r) { return s + r.amount; }, 0);
+    if (monthExpense > ml) {
+      warnings.push({
+        type: 'monthly',
+        limit: ml,
+        spent: monthExpense,
+        over: monthExpense - ml,
+        msg: '本月支出 <b>' + fmtMoney(monthExpense) + '</b> 已超过月限额 <b>' + fmtMoney(ml) + '</b>'
+      });
+    }
+  }
+
+  if (warnings.length > 0) {
+    showOverlimitBanner(warnings);
+    var content = warnings.map(function(w) {
+      return '<div style="background:#fdecea;padding:14px;border-radius:10px;margin-bottom:8px;text-align:center">' +
+        '<p style="font-size:40px;margin-bottom:8px">⚠️</p>' +
+        '<p style="font-size:14px;line-height:1.6">' + w.msg + '</p>' +
+        '<p style="font-size:12px;color:#e74c3c;margin-top:4px">超支 ' + fmtMoney(w.over) + '</p></div>';
+    }).join('');
+    document.getElementById('overLimitContent').innerHTML = content +
+      '<button class="btn-save btn-full" style="background:#e74c3c" onclick="closeModal(\'overLimitModal\')">我知道了</button>';
+    document.getElementById('overLimitModal').classList.add('show');
+    vibrateDevice([200, 100, 200, 100, 400]);
+  }
+}
+
+function confirmAdd() {
+  if (!currentCategory) return;
+  var amount = parseFloat(document.getElementById('amountInput').value);
+  if (!amount || amount <= 0) { showToast('请输入有效金额'); return; }
+  var dateInput = document.getElementById('recordDate').value;
+  var recordDate = dateInput || getToday();
+  var note = document.getElementById('noteInput').value.trim();
+  var map = currentType === 'expense' ? EXPENSE_MAP : INCOME_MAP;
+  var cat = map[currentCategory];
+  var now = new Date().toISOString();
+  var record = {
+    id: Date.now(),
+    date: recordDate,
+    type: currentType,
+    category: currentCategory,
+    amount: amount,
+    note: note,
+    createdAt: now,
+    updatedAt: now
+  };
+  records.push(record);
+  saveRecords();
+
+  var typeLabel = currentType === 'expense' ? '支出' : '收入';
+  var dateLabel = recordDate !== getToday() ? '补录 ' + recordDate : '';
+  cancelAdd();
+  document.getElementById('amountInput').blur();
+  document.getElementById('noteInput').blur();
+  showToast('✅ ' + dateLabel + ' ' + cat.icon + ' ' + cat.name + ' ' + typeLabel + ' ' + fmtMoney(amount) + (note ? ' 📑' + note : ''));
+  refreshAll();
+
+  if (currentType === 'expense') {
+    setTimeout(function() { checkOverLimit(amount, recordDate); }, 300);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var area = document.getElementById('amountArea');
+    if (area && area.style.display !== 'none') {
+      e.preventDefault();
+      confirmAdd();
+    }
+  }
+});
+
+// ============ 今日摘要 + 月度限额显示 ============
+function renderTodaySummary() {
+  var today = getToday();
+  var todayRecords = records.filter(function(r) { return r.date === today; });
+  var expenseTotal = todayRecords.filter(function(r) { return r.type === 'expense'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+  var expenseCount = todayRecords.filter(function(r) { return r.type === 'expense'; }).length;
+
+  document.getElementById('todayExpense').textContent = fmtMoney(expenseTotal);
+  document.getElementById('todayCount').textContent = expenseCount + '笔';
+
+  var dl = getDailyLimit();
+  var dd = document.getElementById('dailyLimitDisplay');
+  var df = document.getElementById('dailyLimitFill');
+  var dr = document.getElementById('dailyLimitRemain');
+  renderLimit(dl, expenseTotal, dd, df, dr);
+
+  var ml = getMonthlyLimit();
+  var currentMonth = getCurrentMonth();
+  var monthExpense = records
+    .filter(function(r) { return getMonthKey(r.date) === currentMonth && r.type === 'expense'; })
+    .reduce(function(s, r) { return s + r.amount; }, 0);
+  var md = document.getElementById('monthlyLimitDisplay');
+  var mf = document.getElementById('monthlyLimitFill');
+  var mr = document.getElementById('monthlyLimitRemain');
+  renderLimit(ml, monthExpense, md, mf, mr);
+}
+
+function renderLimit(limitVal, spent, displayEl, fillEl, remainEl) {
+  if (limitVal > 0) {
+    var pct = Math.min((spent / limitVal) * 100, 100);
+    displayEl.textContent = fmtMoney(spent) + ' / ' + fmtMoney(limitVal);
+    fillEl.style.width = pct + '%';
+    if (pct >= 100) {
+      fillEl.style.background = '#e74c3c';
+      remainEl.textContent = '⚠️ 已超支 ' + fmtMoney(spent - limitVal);
+    } else if (pct >= 80) {
+      fillEl.style.background = '#f39c12';
+      remainEl.textContent = '剩余 ' + fmtMoney(limitVal - spent);
+    } else {
+      fillEl.style.background = '#27ae60';
+      remainEl.textContent = '剩余 ' + fmtMoney(limitVal - spent);
+    }
+  } else {
+    displayEl.textContent = '未配置';
+    fillEl.style.width = '0%';
+    remainEl.textContent = '点击设置';
+  }
+}
+
+// ============ 限额弹窗 ============
+function openLimitModal() {
+  document.getElementById('dailyLimitInput').value = getDailyLimit() || '';
+  document.getElementById('limitModal').classList.add('show');
+  setTimeout(function() { document.getElementById('dailyLimitInput').focus(); }, 100);
+}
+function saveDailyLimit() {
+  var v = parseFloat(document.getElementById('dailyLimitInput').value);
+  if (!v || v <= 0) { showToast('请输入有效金额'); return; }
+  setDailyLimit(v);
+  closeModal('limitModal');
+  showToast('✅ 每日限额已更新');
+  renderTodaySummary();
+}
+
+function openMonthlyLimitModal() {
+  document.getElementById('monthlyLimitInput').value = getMonthlyLimit() || '';
+  document.getElementById('monthlyLimitModal').classList.add('show');
+  setTimeout(function() { document.getElementById('monthlyLimitInput').focus(); }, 100);
+}
+function saveMonthlyLimit() {
+  var v = parseFloat(document.getElementById('monthlyLimitInput').value);
+  if (!v || v <= 0) { showToast('请输入有效金额'); return; }
+  setMonthlyLimit(v);
+  closeModal('monthlyLimitModal');
+  showToast('✅ 月度限额已更新');
+  renderTodaySummary();
+}
+
+// ============ 流水 - 按月折叠下拉 ============
+function toggleSortR() {
+  currentSortR = currentSortR === 'desc' ? 'asc' : 'desc';
+  var btn = document.getElementById('sortBtnR');
+  if (btn) btn.textContent = currentSortR === 'desc' ? '🔽 最新' : '🔼 最早';
+  renderMonthFold();
+}
+
+function getFilteredRecordsR() {
+  var filtered = records.slice();
+  var ft = document.getElementById('filterTypeR');
+  if (ft && ft.value !== 'all') {
+    filtered = filtered.filter(function(r) { return r.type === ft.value; });
+  }
+  filtered.sort(function(a, b) {
+    if (currentSortR === 'desc') return b.date.localeCompare(a.date) || (b.id - a.id);
+    else return a.date.localeCompare(b.date) || (a.id - b.id);
+  });
+  return filtered;
+}
+
+function renderMonthFold() {
+  var filtered = getFilteredRecordsR();
+  var list = document.getElementById('monthFoldList');
+  var summary = document.getElementById('periodSummary');
+
+  var et = filtered.filter(function(r) { return r.type === 'expense'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+  var it = filtered.filter(function(r) { return r.type === 'income'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+
+  if (summary) {
+    summary.innerHTML =
+      '<div class="period-summary-item"><span class="ps-val" style="color:#e74c3c">' + fmtMoney(et) + '</span><span class="ps-lbl">支出</span></div>' +
+      '<div class="period-summary-item"><span class="ps-val" style="color:#07c160">' + fmtMoney(it) + '</span><span class="ps-lbl">收入</span></div>' +
+      '<div class="period-summary-item"><span class="ps-val">' + fmtMoney(it - et) + '</span><span class="ps-lbl">结余</span></div>' +
+      '<div class="period-summary-item"><span class="ps-val">' + filtered.length + '</span><span class="ps-lbl">笔数</span></div>';
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state">📭 暂无匹配的记录</div>';
+    return;
+  }
+
+  var monthGroups = {};
+  filtered.forEach(function(r) {
+    var mk = getMonthKey(r.date);
+    if (!monthGroups[mk]) monthGroups[mk] = [];
+    monthGroups[mk].push(r);
+  });
+
+  var today = getToday();
+  var wd = ['周日','周一','周二','周三','周四','周五','周六'];
+
+  list.innerHTML = Object.keys(monthGroups).sort().reverse().map(function(mk) {
+    var mRecords = monthGroups[mk];
+    var me = mRecords.filter(function(r) { return r.type === 'expense'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+    var mi = mRecords.filter(function(r) { return r.type === 'income'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+    var monthId = 'month-fold-' + mk.replace('-','');
+
+    var dateGroups = {};
+    mRecords.forEach(function(r) {
+      if (!dateGroups[r.date]) dateGroups[r.date] = [];
+      dateGroups[r.date].push(r);
+    });
+
+    var bodyHTML = Object.keys(dateGroups).sort().reverse().map(function(dk) {
+      var dayRecords = dateGroups[dk];
+      var de = dayRecords.filter(function(r) { return r.type === 'expense'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+      var di = dayRecords.filter(function(r) { return r.type === 'income'; }).reduce(function(s, r) { return s + r.amount; }, 0);
+      var isToday = dk === today;
+      var dt = new Date(dk);
+      var dayName = wd[dt.getDay()];
+
+      var header = '<div class="date-group-header">' +
+        '<div class="date-group-left">' +
+        '<span class="date-group-date">' + dk + ' ' + dayName + (isToday ? '<span class="today-badge">今天</span>' : '') + '</span>' +
+        '</div>' +
+        '<div class="date-group-subtotal">' +
+        '<span class="dg-sub-expense">支出 ' + fmtMoney(de) + '</span>' +
+        '<span class="dg-sub-income">收入 ' + fmtMoney(di) + '</span>' +
+        '</div></div>';
+
+      var items = dayRecords.map(function(r) {
+        var map = r.type === 'expense' ? EXPENSE_MAP : INCOME_MAP;
+        var cat = map[r.category] || { icon: '📦', name: r.category };
+        var rowClass = r.type === 'expense' ? 'expense-record' : 'income-record';
+        var amtClass = r.type === 'expense' ? 'expense-amount' : 'income-amount';
+        var sign = r.type === 'expense' ? '-' : '+';
+        return '<div class="record-item ' + rowClass + '">' +
+          '<span class="record-icon">' + cat.icon + '</span>' +
+          '<div class="record-info"><div class="record-cat-row">' +
+          '<span class="record-cat">' + cat.name + '</span>' +
+          (r.note ? '<span class="record-note-tag">📑 ' + r.note + '</span>' : '') +
+          '</div></div>' +
+          '<span class="record-amount ' + amtClass + '">' + sign + fmtMoney(r.amount) + '</span>' +
+          '<button class="record-delete" onclick="deleteRecord(' + r.id + ')">🗑</button></div>';
+      }).join('');
+
+      return header + items;
+    }).join('');
+
+    return '<div class="month-fold-item open" id="' + monthId + '">' +
+      '<div class="month-fold-header" onclick="toggleMonthFold(\'' + monthId + '\')">' +
+      '<div class="month-fold-title">📮 ' + mk + '</div>' +
+      '<div class="month-fold-summary">' +
+      '<span class="mfs-expense">支出 ' + fmtMoney(me) + '</span>' +
+      '<span class="mfs-income">收入 ' + fmtMoney(mi) + '</span>' +
+      '<span class="mfs-count">' + mRecords.length + '笔</span>' +
+      '</div>' +
+      '<span class="month-fold-arrow">▼</span>' +
+      '</div>' +
+      '<div class="month-fold-body">' + bodyHTML + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function toggleMonthFold(monthId) {
+  var el = document.getElementById(monthId);
+  if (el) el.classList.toggle('open');
+}
+
+function deleteRecord(id) {
+  if (!confirm('确定删除这条记录吗？')) return;
+  records = records.filter(function(r) { return r.id !== id; });
+  saveRecords();
+  showToast('🗑 已删除');
+  refreshAll();
+}
+
+// ============ 图表（分析页） ============
+var pieChart, lineChart, barChart;
+
+function destroyCharts() {
+  if (typeof Chart === 'undefined') return;
+  [pieChart, lineChart, barChart].forEach(function(c) {
+    try { c.destroy(); } catch(e) {}
+  });
+  pieChart = lineChart = barChart = null;
+}
+
+function populateChartMonth() {
+  var months = [];
+  var seen = {};
+  records.forEach(function(r) {
+    var mk = getMonthKey(r.date);
+    if (!seen[mk]) { seen[mk] = true; months.push(mk); }
+  });
+  months.sort();
+  var cur = getCurrentMonth();
+  if (!seen[cur]) months.push(cur);
+  months.sort();
+  var sel = document.getElementById('chartMonth');
+  if (sel) sel.innerHTML = months.map(function(m) {
+    return '<option value="' + m + '" ' + (m === cur ? 'selected' : '') + '>' + m + '</option>';
+  }).join('');
+}
+
+function renderCharts() {
+  if (typeof Chart === 'undefined') { return; }
+  destroyCharts();
+
+  var sel = document.getElementById('chartMonth');
+  if (!sel) return;
+  var month = sel.value;
+  var monthRecords = records.filter(function(r) { return getMonthKey(r.date) === month; });
+  var expenseRecords = monthRecords.filter(function(r) { return r.type === 'expense'; });
+  var incomeRecords = monthRecords.filter(function(r) { return r.type === 'income'; });
+
+  var et = expenseRecords.reduce(function(s, r) { return s + r.amount; }, 0);
+  var it = incomeRecords.reduce(function(s, r) { return s + r.amount; }, 0);
+  var days = [];
+  var seen = {};
+  monthRecords.forEach(function(r) { if (!seen[r.date]) { seen[r.date] = true; days.push(r.date); } });
+  var avg = et / (days.length || 1);
+
+  var se = document.getElementById('statExpense'), si = document.getElementById('statIncome');
+  var sb = document.getElementById('statBalance'), sa = document.getElementById('statAvg');
+  if (se) se.textContent = fmtMoney(et);
+  if (si) si.textContent = fmtMoney(it);
+  if (sb) sb.textContent = fmtMoney(it - et);
+  if (sa) sa.textContent = fmtMoney(avg);
+
+  var catTotals = {};
+  expenseRecords.forEach(function(r) { catTotals[r.category] = (catTotals[r.category] || 0) + r.amount; });
+  var cl = Object.keys(catTotals);
+  var cv = Object.values(catTotals);
+
+  if (cl.length > 0) {
+    var isCyber = document.body.classList.contains('theme-pink');
+    var bgColors = isCyber
+      ? ['#e91e8c','#c2185b','#39ff14','#00e676','#ff4081','#f50057','#76ff03','#b2ff59','#ff80ab','#ea80fc','#84ffff','#18ffff'].slice(0, cl.length)
+      : EXPENSE_COLORS.slice(0, cl.length);
+    pieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: cl.map(function(id) { return (EXPENSE_MAP[id] || {}).name || id; }),
+        datasets: [{
+          data: cv,
+          backgroundColor: bgColors,
+          borderWidth: isCyber ? 2 : 3,
+          borderColor: isCyber ? '#1a0a14' : '#fff',
+          hoverBorderWidth: isCyber ? 4 : 4,
+          hoverBorderColor: isCyber ? '#39ff14' : '#fff',
+          borderRadius: isCyber ? 0 : 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true, cutout: '55%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 }, color: isCyber ? '#ccc' : '#606266' }
+          },
+          tooltip: {
+            backgroundColor: isCyber ? '#2d0a1e' : undefined,
+            titleColor: isCyber ? '#39ff14' : undefined,
+            bodyColor: isCyber ? '#fff' : undefined,
+            borderColor: isCyber ? '#39ff14' : undefined,
+            borderWidth: isCyber ? 1 : 0,
+            callbacks: { label: function(ctx) {
+              var total = cv.reduce(function(a,b) { return a+b; }, 0);
+              var pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+              return ctx.label + ': ' + fmtMoney(ctx.raw) + ' (' + pct + '%)';
+            }}
+          }
+        }
+      }
+    });
+  }
+
+  var dateData = {};
+  monthRecords.forEach(function(r) {
+    if (!dateData[r.date]) dateData[r.date] = { expense: 0, income: 0 };
+    if (r.type === 'expense') dateData[r.date].expense += r.amount;
+    else dateData[r.date].income += r.amount;
+  });
+  var sortedDates = Object.keys(dateData).sort();
+  var ev = sortedDates.map(function(d) { return dateData[d].expense; });
+  var iv = sortedDates.map(function(d) { return dateData[d].income; });
+  var dl = sortedDates.map(function(d) { return d.substring(8); });
+
+  if (sortedDates.length > 0) {
+    var isCyber2 = document.body.classList.contains('theme-pink');
+    lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: dl,
+        datasets: [
+          { label: '支出', data: ev, borderColor: isCyber2 ? '#e91e8c' : '#e74c3c', backgroundColor: isCyber2 ? 'rgba(233,30,140,0.12)' : 'rgba(231,76,60,0.08)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: isCyber2 ? '#e91e8c' : '#e74c3c', borderWidth: isCyber2 ? 3 : 2, pointBorderColor: isCyber2 ? '#39ff14' : undefined, pointBorderWidth: isCyber2 ? 1 : 0 },
+          { label: '收入', data: iv, borderColor: isCyber2 ? '#39ff14' : '#07c160', backgroundColor: isCyber2 ? 'rgba(57,255,20,0.08)' : 'rgba(7,193,96,0.08)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: isCyber2 ? '#39ff14' : '#07c160', borderWidth: isCyber2 ? 3 : 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels: { color: isCyber2 ? '#ccc' : '#606266', usePointStyle: true } } },
+        scales: {
+          x: { ticks: { color: isCyber2 ? '#999' : '#909399' }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { callback: function(v) { return '\u00A5' + v; }, color: isCyber2 ? '#999' : '#909399' }, grid: { color: isCyber2 ? '#3a1a2a' : '#ebeef5' } }
+        }
+      }
+    });
+  }
+
+  if (cl.length > 0) {
+    var isCyber3 = document.body.classList.contains('theme-pink');
+    var barColors, barBorderColors;
+    if (isCyber3) {
+      barColors = cl.map(function(_, i) { return i % 2 === 0 ? 'rgba(233,30,140,0.7)' : 'rgba(57,255,20,0.5)'; });
+      barBorderColors = cl.map(function(_, i) { return i % 2 === 0 ? '#e91e8c' : '#39ff14'; });
+    } else {
+      barColors = EXPENSE_COLORS.slice(0, cl.length).map(function(c) { return c + 'BB'; });
+      barBorderColors = EXPENSE_COLORS.slice(0, cl.length);
+    }
+    barChart = new Chart(document.getElementById('barChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: cl.map(function(id) { return (EXPENSE_MAP[id] || {}).name || id; }),
+        datasets: [{
+          label: '支出金额',
+          data: cv,
+          backgroundColor: barColors,
+          borderColor: barBorderColors,
+          borderWidth: isCyber3 ? 2 : 1,
+          borderRadius: isCyber3 ? 6 : 10,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: isCyber3 ? '#999' : '#909399' }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { callback: function(v) { return '\u00A5' + v; }, color: isCyber3 ? '#999' : '#909399' }, grid: { color: isCyber3 ? '#3a1a2a' : '#ebeef5' } }
+        }
+      }
+    });
+  }
+}
+
+// ============ 日志系统（含4位独立密码） ============
+function renderDiaryPage() {
+  var today = getToday();
+  var wd = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  document.getElementById('diaryDate').textContent = '📮 ' + today + ' ' + wd[new Date().getDay()];
+
+  var todayDiary = diaries.find(function(d) { return d.date === today; });
+  // 始终清空输入框和表情选择，已保存的内容显示在历史列表中
+  document.getElementById('diaryContent').value = '';
+  if (todayDiary) {
+    document.querySelectorAll('.mood-btn').forEach(function(b) {
+      b.classList.toggle('selected', b.dataset.mood === todayDiary.mood);
+    });
+  } else {
+    document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+  }
+
+  document.querySelectorAll('.mood-btn').forEach(function(b) {
+    b.onclick = function() {
+      document.querySelectorAll('.mood-btn').forEach(function(x) { x.classList.remove('selected'); });
+      this.classList.add('selected');
+    };
+  });
+
+  renderDiaryMonthSummary();
+  renderDiaryList();
+}
+
+function renderDiaryList() {
+  var list = document.getElementById('diaryList');
+  var sorted = diaries.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty-state">📭 还没有写过日志哦~</div>';
+    return;
+  }
+  list.innerHTML = sorted.map(function(d) {
+    return '<div class="diary-item" onclick="openDiaryWithPwd(\'' + d.date + '\')">' +
+      '<div class="diary-item-header">' +
+      '<span class="diary-item-mood">' + (d.mood || '📑') + '</span>' +
+      '<span class="diary-item-date">📮 ' + d.date + ' 🔐</span>' +
+      '<button class="diary-item-delete" onclick="event.stopPropagation();deleteDiary(\'' + d.date + '\')">🗑 删除</button>' +
+      '</div>' +
+      '<div class="diary-item-content">🔐 点击输入密码查看</div></div>';
+  }).join('');
+}
+
+function saveDiary() {
+  var mb = document.querySelector('.mood-btn.selected');
+  var mood = mb ? mb.dataset.mood : '📑';
+  var content = document.getElementById('diaryContent').value.trim();
+  var today = getToday();
+  var idx = diaries.findIndex(function(d) { return d.date === today; });
+  if (idx >= 0) {
+    diaries[idx].mood = mood;
+    diaries[idx].content = content;
+  } else {
+    diaries.push({ date: today, mood: mood, content: content, createdAt: new Date().toISOString() });
+  }
+  saveDiaryData();
+  showToast('✅ 心情日志已保存');
+
+  // 保存后自动清空输入框和已选表情
+  document.getElementById('diaryContent').value = '';
+  document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+
+  renderDiaryList();
+}
+
+function deleteDiary(date) {
+  if (!confirm('确定删除 ' + date + ' 的日志吗？')) return;
+  diaries = diaries.filter(function(d) { return d.date !== date; });
+  saveDiaryData();
+  showToast('🗑 日志已删除');
+  renderDiaryPage();
+}
+
+var diaryPwdInput = '';
+var diaryPwdTargetDate = '';
+
+function openDiaryWithPwd(date) {
+  diaryPwdTargetDate = date;
+  diaryPwdInput = '';
+  document.getElementById('diaryPwdDate').textContent = date;
+  var dots = document.querySelectorAll('#diaryPwdDots .pwd-dot');
+  dots.forEach(function(d) { d.classList.remove('filled', 'error'); });
+  document.getElementById('diaryPwdError').textContent = '';
+  document.getElementById('diaryPwdModal').classList.add('show');
+  renderDiaryPwdKeypad();
+}
+
+function renderDiaryPwdKeypad() {
+  var pad = document.getElementById('diaryPwdKeypad');
+  var nums = [1,2,3,4,5,6,7,8,9,'del',0,''];
+  pad.innerHTML = nums.map(function(n) {
+    if (n === '') return '<button class="keypad-btn empty"></button>';
+    if (n === 'del') return '<button class="keypad-btn del" onclick="diaryPwdKeyPress(\'del\')">⌫</button>';
+    return '<button class="keypad-btn" onclick="diaryPwdKeyPress(\'' + n + '\')">' + n + '</button>';
+  }).join('');
+}
+
+function diaryPwdKeyPress(key) {
+  var dots = document.querySelectorAll('#diaryPwdDots .pwd-dot');
+  var errEl = document.getElementById('diaryPwdError');
+
+  if (key === 'del') {
+    if (diaryPwdInput.length > 0) {
+      diaryPwdInput = diaryPwdInput.slice(0, -1);
+      dots[diaryPwdInput.length].classList.remove('filled', 'error');
+    }
+    errEl.textContent = '';
+    return;
+  }
+
+  if (diaryPwdInput.length >= 4) return;
+
+  diaryPwdInput += key;
+  dots[diaryPwdInput.length - 1].classList.add('filled');
+  errEl.textContent = '';
+
+  if (diaryPwdInput.length === 4) {
+    setTimeout(function() {
+      if (diaryPwdInput === diaryPassword) {
+        closeModal('diaryPwdModal');
+        showDiaryContent(diaryPwdTargetDate);
+      } else {
+        diaryPwdInput = '';
+        dots.forEach(function(d) { d.classList.add('error'); d.classList.remove('filled'); });
+        errEl.textContent = '❌ 密码错误，请重新输入';
+        vibrateDevice([100, 50, 100]);
+        setTimeout(function() {
+          dots.forEach(function(d) { d.classList.remove('error'); });
+          errEl.textContent = '';
+        }, 600);
+      }
+    }, 150);
+  }
+}
+
+function showDiaryContent(date) {
+  var diary = diaries.find(function(d) { return d.date === date; });
+  if (!diary) return;
+  document.getElementById('diaryViewContent').innerHTML =
+    '<div class="diary-view-mood">' + (diary.mood || '📑') + '</div>' +
+    '<div class="diary-view-date">📮 ' + date + '</div>' +
+    '<div class="diary-view-text">' + (diary.content || '(无内容)') + '</div>';
+  document.getElementById('diaryViewModal').classList.add('show');
+}
+
+// ============ 导出 ============
+function exportAll() {
+  var sorted = records.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+  if (sorted.length === 0) { showToast('没有数据可导出'); return; }
+  var BOM = '\uFEFF';
+  var headers = ['日期', '类型', '分类', '金额', '备注'];
+  var rows = sorted.map(function(r) {
+    var map = r.type === 'expense' ? EXPENSE_MAP : INCOME_MAP;
+    var cat = map[r.category] || {};
+    return [r.date, r.type === 'expense' ? '支出' : '收入', cat.name || r.category, r.amount.toFixed(2), r.note || ''].join(',');
+  }).join('\n');
+  var blob = new Blob([BOM + headers.join(',') + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '我的账本_全部数据.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📜 导出成功');
+}
+
+// ============ FAB ============
+function scrollToAdd() {
+  if (currentPageName !== 'home') switchPage('home');
+  setTimeout(function() {
+    document.querySelector('.quick-add-card').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(function() {
+      var firstCat = document.querySelector('#page-home .cat-btn');
+      if (firstCat) firstCat.click();
+    }, 400);
+  }, 300);
+}
+
+// ============ 初始化 ============
+function initDatePicker() {
+  var di = document.getElementById('recordDate');
+  di.value = getToday();
+  di.max = getToday();
+}
+
+function refreshAll() {
+  renderTodaySummary();
+  if (currentPageName === 'records') renderMonthFold();
+}
+
+async function initApp() {
+  loadSidebarTitle();
+  loadDandelionTheme();
+  initDatePicker();
+  setType('expense');
+  renderCatGrid();
+  populateChartMonth();
+  renderTodaySummary();
+}
+
+// ============ 超限顶部横幅 ============
+function showOverlimitBanner(warnings) {
+  var banner = document.getElementById('overlimitBanner');
+  var text = document.getElementById('overlimitBannerText');
+  if (!banner || !text) return;
+  var msgs = warnings.map(function(w) {
+    return (w.type === 'daily' ? '今日' : '本月') + '超支 ' + fmtMoney(w.over);
+  });
+  text.textContent = msgs.join('；');
+  banner.style.display = 'flex';
+  clearTimeout(banner._hideTid);
+  banner._hideTid = setTimeout(function() {
+    banner.style.display = 'none';
+  }, 5000);
+}
+
+function dismissOverlimitBanner() {
+  var banner = document.getElementById('overlimitBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+// ============ 日志当月汇总 ============
+function renderDiaryMonthSummary() {
+  var container = document.getElementById('diaryMonthSummary');
+  if (!container) return;
+  var currentMonth = getCurrentMonth();
+  var monthDiaries = diaries.filter(function(d) {
+    return getMonthKey(d.date) === currentMonth;
+  });
+  if (monthDiaries.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+  var moodCounts = {};
+  monthDiaries.forEach(function(d) {
+    var m = d.mood || '📑';
+    moodCounts[m] = (moodCounts[m] || 0) + 1;
+  });
+  var sorted = Object.keys(moodCounts).sort(function(a, b) { return moodCounts[b] - moodCounts[a]; });
+  container.innerHTML = '<span class="diary-summary-label">本月日志：</span>' +
+    sorted.map(function(m) { return '<span class="diary-summary-tag">' + m + ' ×' + moodCounts[m] + '</span>'; }).join('') +
+    '<span class="diary-summary-tag" style="background:var(--primary-light);color:var(--primary)">共 ' + monthDiaries.length + ' 篇</span>';
+}
+
+// ============ 启动 ============
+async function boot() {
+  // 检查是否已有 Supabase Auth 会话
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user.id;
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('appWrapper').style.display = 'flex';
+      document.getElementById('fabBtn').style.display = 'flex';
+      document.getElementById('sidebarUserName').textContent = session.user.email;
+      document.getElementById('sidebarUserInfo').style.display = 'flex';
+      var ds = localStorage.getItem('ledger_' + currentUser + '_diary_pwd');
+      diaryPassword = ds || '1234';
+      if (!ds) localStorage.setItem('ledger_' + currentUser + '_diary_pwd', diaryPassword);
+      await loadUserData();
+      initApp();
+      showToast('☁️ 云端同步已就绪');
+      return;
+    }
+  } catch(e) {}
+  // 未登录，显示登录页
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('sidebarUserInfo').style.display = 'none';
+  showToast('☁️ 云端同步已就绪');
+}
+
+boot();
+
+</script>
+
+</body>
+</html>
+
