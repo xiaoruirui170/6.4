@@ -127,13 +127,15 @@ a:hover { text-decoration: underline; }
 <h2>四、项目文件结构</h2>
 <table>
 <tr><th>文件</th><th>说明</th></tr>
-<tr><td><code>index.html</code></td><td>主程序（包含 HTML + CSS + JavaScript 全部代码）</td></tr>
+<tr><td><code>index.html</code></td><td>主程序（包含 HTML + CSS + JavaScript 全部代码，单文件架构）</td></tr>
+<tr><td><code>styles.css</code></td><td>CSS 样式文件（独立拆分版，方便阅读）</td></tr>
+<tr><td><code>app.js</code></td><td>JavaScript 逻辑文件（独立拆分版，方便阅读）</td></tr>
 <tr><td><code>README.md</code></td><td>项目说明文档（Markdown 格式）</td></tr>
-<tr><td><code>README.pdf</code></td><td>项目说明文档（PDF 版本）</td></tr>
+<tr><td><code>README_preview.html</code></td><td>项目说明文档（HTML 格式，可打印为 PDF）</td></tr>
 </table>
 
 <div class="highlight" style="margin-top:15px;">
-<b>本项目采用单文件架构</b>，将 HTML 结构、CSS 样式和 JavaScript 逻辑全部集成在一个 index.html 文件中，方便部署和分发。
+<b>本项目采用单文件架构</b>，主文件 index.html 将 HTML 结构、CSS 样式和 JavaScript 逻辑全部集成，方便部署和分发。同时提供独立的 styles.css 和 app.js 方便查看源码结构。
 </div>
 
 <h2>五、开发信息</h2>

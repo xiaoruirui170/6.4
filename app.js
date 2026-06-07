@@ -1,16 +1,15 @@
 // ================================================================
-//  我的账本 - 核心逻辑 v5 (Supabase 云端存储版)
-//  功能：多账户系统 | 6位密码登录 | 日/月限额超限震动警告
+//  我的账本 - 核心逻辑 v6 (Supabase Auth 邮箱登录版)
+//  功能：邮箱登录 | 日/月限额超限震动警告
 //        按月折叠流水 | 缤纷图表 | 日志独立密码 | 云端同步
 // ================================================================
 
 // ============ Supabase 配置 ============
-var SUPABASE_URL = 'https://bmfwgxrdtfourwtwhl.supabase.co';
+var SUPABASE_URL = 'https://bmfwgxfrdtjfourwtwhl.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_FPbyCVlUq7Qy4nKUtscm8g_PhqBS01t';
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============ 全局状态 ============
-var accountList = {};
 var currentUser = null;
 var records = [];
 var diaries = [];
@@ -18,7 +17,6 @@ var currentType = 'expense';
 var currentCategory = null;
 var currentPageName = 'home';
 var currentSortR = 'desc';
-var loginPassword = null;
 var diaryPassword = null;
 
 // ============ 类别定义 ============
@@ -57,74 +55,90 @@ var EXPENSE_COLORS = [
   '#C9CBCF','#A5A5A5'
 ];
 
-// ============ 简单密码哈希 ============
-function hashPwd(pwd) {
-  var h = 0;
-  for (var i = 0; i < pwd.length; i++) {
-    h = ((h << 5) - h) + pwd.charCodeAt(i);
-    h |= 0;
+// ============ Supabase Auth 登录/注册 ============
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pwd = document.getElementById('loginPassword').value;
+  var errEl = document.getElementById('loginError');
+  if (!email || !pwd) { errEl.textContent = '请输入邮箱和密码'; return; }
+  if (pwd.length < 6) { errEl.textContent = '密码不能少于6位'; return; }
+  errEl.textContent = '登录中...';
+
+  var { data, error } = await sb.auth.signInWithPassword({ email: email, password: pwd });
+  if (error) {
+    errEl.textContent = '❌ ' + (error.message || '登录失败');
+    return;
   }
-  return 'h_' + Math.abs(h).toString(36);
+  await onAuthSuccess(data.user);
+}
+
+async function doRegister() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pwd = document.getElementById('loginPassword').value;
+  var errEl = document.getElementById('loginError');
+  if (!email || !pwd) { errEl.textContent = '请输入邮箱和密码'; return; }
+  if (pwd.length < 6) { errEl.textContent = '密码不能少于6位'; return; }
+  errEl.textContent = '注册中...';
+
+  var { data, error } = await sb.auth.signUp({ email: email, password: pwd });
+  if (error) {
+    errEl.textContent = '❌ ' + (error.message || '注册失败');
+    return;
+  }
+  if (data.user) {
+    showToast('✅ 注册成功！');
+    await onAuthSuccess(data.user);
+  } else {
+    showToast('📧 请检查邮箱确认注册');
+    errEl.textContent = '';
+  }
+}
+
+async function onAuthSuccess(user) {
+  currentUser = user.id;
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appWrapper').style.display = 'flex';
+  document.getElementById('fabBtn').style.display = 'flex';
+  document.getElementById('sidebarUserName').textContent = user.email;
+  document.getElementById('sidebarUserInfo').style.display = 'flex';
+
+  var ds = localStorage.getItem('ledger_' + currentUser + '_diary_pwd');
+  if (!ds) {
+    diaryPassword = '1234';
+    localStorage.setItem('ledger_' + currentUser + '_diary_pwd', diaryPassword);
+  } else {
+    diaryPassword = ds;
+  }
+
+  showToast('✅ 欢迎回来！');
+  await loadUserData();
+  initApp();
+}
+
+async function doLogout() {
+  saveRecords();
+  saveDiaryData();
+  await sb.auth.signOut();
+  currentUser = null;
+  records = [];
+  diaries = [];
+  document.getElementById('appWrapper').style.display = 'none';
+  document.getElementById('fabBtn').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('sidebarUserInfo').style.display = 'none';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+  showToast('👋 已退出登录');
 }
 
 // ============ Supabase 云端数据操作 ============
-// 从云端加载所有账户（优先本地缓存，后台同步云端）
-async function loadAccounts() {
-  // 先从本地缓存立即加载，保证页面秒开
-  try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e) { accountList = {}; }
-
-  // 后台从云端同步
-  try {
-    var { data, error } = await sb.from('accounts').select('*');
-    if (error) throw error;
-    accountList = {};
-    data.forEach(function(row) {
-      accountList[row.username] = {
-        passwordHash: row.password_hash,
-        createdAt: row.created_at
-      };
-    });
-    localStorage.setItem('ledger_accounts', JSON.stringify(accountList));
-  } catch(e) {
-    console.log('从云端加载账户失败，使用本地缓存:', e.message);
-    // 如果本地缓存也没有，用刚才加载的
-    if (Object.keys(accountList).length === 0) {
-      try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e2) { accountList = {}; }
-    }
-  }
-}
-
-// 保存账户到云端（使用 upsert，不删除旧数据）
-async function saveAccounts() {
-  try {
-    var usernames = Object.keys(accountList);
-    var rows = usernames.map(function(u) {
-      return {
-        username: u,
-        password_hash: accountList[u].passwordHash,
-        created_at: accountList[u].createdAt
-      };
-    });
-    if (rows.length > 0) {
-      var { error } = await sb.from('accounts').upsert(rows, { onConflict: 'username' });
-      if (error) throw error;
-    }
-    localStorage.setItem('ledger_accounts', JSON.stringify(accountList));
-  } catch(e) {
-    console.log('保存账户到云端失败:', e.message);
-    localStorage.setItem('ledger_accounts', JSON.stringify(accountList));
-  }
-}
-
-// 从云端加载用户数据（优先本地缓存，秒开；后台同步云端）
 async function loadUserData() {
   if (!currentUser) return;
 
-  // 1. 先从本地缓存立即加载（秒开）
   try { records = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_records')) || []; } catch(e) { records = []; }
   try { diaries = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_diaries')) || []; } catch(e) { diaries = []; }
 
-  // 2. 也尝试从旧格式 key 迁移
   if (records.length === 0) {
     try { records = JSON.parse(localStorage.getItem('ledger_records_' + currentUser)) || []; } catch(e) {}
   }
@@ -132,27 +146,21 @@ async function loadUserData() {
     try { diaries = JSON.parse(localStorage.getItem('ledger_diaries_' + currentUser)) || []; } catch(e) {}
   }
 
-  // 3. 后台异步从云端同步（不阻塞页面显示）
   syncUserDataFromCloud();
 }
 
 async function syncUserDataFromCloud() {
   if (!currentUser) return;
   try {
-    // ===== 智能合并记录：云端+本地取并集，按 createdAt 去重 =====
-    var { data: recData, error: recErr } = await sb.from('records').select('*').eq('username', currentUser).order('created_at', { ascending: false });
+    // 智能合并记录
+    var { data: recData, error: recErr } = await sb.from('records').select('*').eq('user_id', currentUser).order('created_at', { ascending: false });
     var cloudRecords = [];
     if (!recErr && recData && recData.length > 0) {
       cloudRecords = recData.map(function(r) { return r.data; });
     }
 
-    // 合并：用 id 去重，优先保留 createdAt 更晚的版本
     var mergedMap = {};
-    // 先放本地
-    records.forEach(function(r) {
-      if (r && r.id) mergedMap[r.id] = r;
-    });
-    // 再放云端（覆盖同 id 的旧版本）
+    records.forEach(function(r) { if (r && r.id) mergedMap[r.id] = r; });
     cloudRecords.forEach(function(r) {
       if (r && r.id) {
         var local = mergedMap[r.id];
@@ -167,26 +175,20 @@ async function syncUserDataFromCloud() {
     if (merged.length !== records.length || cloudRecords.length > 0) {
       records = merged;
       localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
-      // 如果云端数据比本地少，把本地多的同步上去
-      if (merged.length > cloudRecords.length) {
-        await saveRecordsToCloud();
-      }
+      if (merged.length > cloudRecords.length) { await saveRecordsToCloud(); }
     } else if (records.length > 0 && cloudRecords.length === 0) {
-      // 本地有数据但云端没有，迁移到云端
       await saveRecordsToCloud();
     }
 
-    // ===== 智能合并日记 =====
-    var { data: diaryData, error: diaryErr } = await sb.from('diaries').select('*').eq('username', currentUser).order('created_at', { ascending: false });
+    // 智能合并日记
+    var { data: diaryData, error: diaryErr } = await sb.from('diaries').select('*').eq('user_id', currentUser).order('created_at', { ascending: false });
     var cloudDiaries = [];
     if (!diaryErr && diaryData && diaryData.length > 0) {
       cloudDiaries = diaryData.map(function(d) { return d.data; });
     }
 
     var diaryMap = {};
-    diaries.forEach(function(d) {
-      if (d && d.date) diaryMap[d.date] = d;
-    });
+    diaries.forEach(function(d) { if (d && d.date) diaryMap[d.date] = d; });
     cloudDiaries.forEach(function(d) {
       if (d && d.date) {
         var local = diaryMap[d.date];
@@ -201,22 +203,25 @@ async function syncUserDataFromCloud() {
     if (mergedDiaries.length !== diaries.length || cloudDiaries.length > 0) {
       diaries = mergedDiaries;
       localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
-      if (mergedDiaries.length > cloudDiaries.length) {
-        await saveDiaryDataToCloud();
-      }
+      if (mergedDiaries.length > cloudDiaries.length) { await saveDiaryDataToCloud(); }
     } else if (diaries.length > 0 && cloudDiaries.length === 0) {
       await saveDiaryDataToCloud();
     }
 
-    // ===== 同步设置（云端优先） =====
-    var { data: setData } = await sb.from('user_settings').select('*').eq('username', currentUser);
+    // 同步设置
+    var { data: setData } = await sb.from('user_settings').select('*').eq('user_id', currentUser);
     if (setData && setData.length > 0) {
       var settings = {};
-      setData.forEach(function(s) { settings[s.key] = s.value; });
+      setData.forEach(function(s) {
+        settings[s.key] = s.value;
+        localStorage.setItem('ledger_' + currentUser + '_' + s.key, s.value);
+      });
       localStorage.setItem('ledger_' + currentUser + '_settings', JSON.stringify(settings));
+      loadSidebarTitle();
+      loadDandelionTheme();
+      renderTodaySummary();
     }
 
-    // 同步后刷新页面（避免频繁全量刷新，只刷新当前页）
     if (currentPageName === 'records') renderMonthFold();
     if (currentPageName === 'diary') renderDiaryPage();
     if (currentPageName === 'home') renderTodaySummary();
@@ -226,14 +231,12 @@ async function syncUserDataFromCloud() {
   }
 }
 
-// 保存记录到云端（使用 upsert，不会先删除旧数据）
 async function saveRecordsToCloud() {
   if (!currentUser) return;
-  // 始终先保存本地缓存
   localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
   try {
     var rows = records.map(function(r) {
-      return { username: currentUser, record_id: r.id, data: r, created_at: r.createdAt, updated_at: r.updatedAt || r.createdAt };
+      return { user_id: currentUser, record_id: r.id, data: r, created_at: r.createdAt, updated_at: r.updatedAt || r.createdAt };
     });
     if (rows.length > 0) {
       for (var i = 0; i < rows.length; i += 100) {
@@ -244,18 +247,15 @@ async function saveRecordsToCloud() {
     }
   } catch(e) {
     console.log('保存记录到云端失败:', e.message);
-    // 本地数据不受影响
   }
 }
 
-// 保存日记到云端（使用 upsert，不会先删除旧数据）
 async function saveDiaryDataToCloud() {
   if (!currentUser) return;
-  // 始终先保存本地缓存
   localStorage.setItem('ledger_' + currentUser + '_diaries', JSON.stringify(diaries));
   try {
     var rows = diaries.map(function(d) {
-      return { username: currentUser, diary_date: d.date, data: d, created_at: d.createdAt, updated_at: d.updatedAt || d.createdAt };
+      return { user_id: currentUser, diary_date: d.date, data: d, created_at: d.createdAt, updated_at: d.updatedAt || d.createdAt };
     });
     if (rows.length > 0) {
       for (var i = 0; i < rows.length; i += 100) {
@@ -266,44 +266,39 @@ async function saveDiaryDataToCloud() {
     }
   } catch(e) {
     console.log('保存日记到云端失败:', e.message);
-    // 本地数据不受影响
   }
 }
 
-// 保存用户设置到云端
 async function saveUserSetting(key, value) {
   if (!currentUser) return;
   try {
-    var { data: existing } = await sb.from('user_settings').select('*').eq('username', currentUser).eq('key', key);
+    var { data: existing } = await sb.from('user_settings').select('*').eq('user_id', currentUser).eq('key', key);
     if (existing && existing.length > 0) {
-      await sb.from('user_settings').update({ value: value }).eq('username', currentUser).eq('key', key);
+      await sb.from('user_settings').update({ value: value }).eq('user_id', currentUser).eq('key', key);
     } else {
-      await sb.from('user_settings').insert({ username: currentUser, key: key, value: value });
+      await sb.from('user_settings').insert({ user_id: currentUser, key: key, value: value });
     }
   } catch(e) {
     console.log('保存设置到云端失败:', e.message);
   }
-  // 同时保存到本地
   var settings = {};
   try { settings = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_settings')) || {}; } catch(e2) {}
   settings[key] = value;
   localStorage.setItem('ledger_' + currentUser + '_settings', JSON.stringify(settings));
 }
 
-// 从云端获取用户设置
 async function getUserSetting(key) {
   if (!currentUser) return null;
   try {
-    var { data, error } = await sb.from('user_settings').select('value').eq('username', currentUser).eq('key', key);
+    var { data, error } = await sb.from('user_settings').select('value').eq('user_id', currentUser).eq('key', key);
     if (!error && data && data.length > 0) return data[0].value;
   } catch(e) {}
-  // 回退到本地
   var settings = {};
   try { settings = JSON.parse(localStorage.getItem('ledger_' + currentUser + '_settings')) || {}; } catch(e2) {}
   return settings[key] || null;
 }
 
-// ============ 数据持久化接口（兼容旧代码） ============
+// ============ 数据持久化接口 ============
 function saveRecords() {
   if (!currentUser) return;
   localStorage.setItem('ledger_' + currentUser + '_records', JSON.stringify(records));
@@ -318,8 +313,7 @@ function saveDiaryData() {
 
 function getDailyLimit() {
   if (!currentUser) return 0;
-  var local = parseFloat(localStorage.getItem('ledger_' + currentUser + '_daily_limit')) || 0;
-  return local;
+  return parseFloat(localStorage.getItem('ledger_' + currentUser + '_daily_limit')) || 0;
 }
 
 function setDailyLimit(v) {
@@ -339,19 +333,13 @@ function setMonthlyLimit(v) {
   saveUserSetting('monthly_limit', String(v));
 }
 
-function getUserStore(username, field) {
-  return localStorage.getItem('ledger_' + username + '_' + field);
+function getUserStore(field) {
+  return localStorage.getItem('ledger_' + currentUser + '_' + field);
 }
 
-function setUserStore(username, field, val) {
-  localStorage.setItem('ledger_' + username + '_' + field, val);
-  if (username === currentUser) {
-    saveUserSetting(field, val);
-  }
-}
-
-function getAccountUsernames() {
-  return Object.keys(accountList).sort();
+function setUserStore(field, val) {
+  localStorage.setItem('ledger_' + currentUser + '_' + field, val);
+  saveUserSetting(field, val);
 }
 
 // ============ 工具函数 ============
@@ -391,208 +379,18 @@ function vibrateDevice(pattern) {
   }
 }
 
-// ============ 1. 登录系统（多账户） ============
-async function initLoginPassword() {
-  // 先加载本地缓存，立即显示账户列表
-  try { accountList = JSON.parse(localStorage.getItem('ledger_accounts')) || {}; } catch(e) { accountList = {}; }
-  var lastUser = localStorage.getItem('ledger_current_user');
-  if (lastUser && accountList[lastUser]) {
-    loginPassword = accountList[lastUser].passwordHash;
-  }
-  renderAccountList();
-
-  // 后台同步云端（不影响当前操作）
-  loadAccounts().then(function() {
-    var lastUser2 = localStorage.getItem('ledger_current_user');
-    if (lastUser2 && accountList[lastUser2]) {
-      loginPassword = accountList[lastUser2].passwordHash;
-    }
-    renderAccountList();
-  });
-}
-
-function renderAccountList() {
-  var list = document.getElementById('accountList');
-  var users = getAccountUsernames();
-  if (users.length === 0) {
-    list.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px">暂无账户，请创建一个</p>';
-    return;
-  }
-  list.innerHTML = users.map(function(u) {
-    var info = accountList[u];
-    var date = info.createdAt ? info.createdAt.substring(0, 10) : '';
-    return '<div class="account-card" onclick="selectAccount(\'' + u + '\')">' +
-      '<span class="account-card-icon">👁</span>' +
-      '<div class="account-card-info">' +
-      '<span class="account-card-name">' + u + '</span>' +
-      '<span class="account-card-date">创建于 ' + date + '</span>' +
-      '</div>' +
-      '<span class="account-card-arrow">→</span></div>';
-  }).join('');
-}
-
-var selectedAccount = null;
-function selectAccount(username) {
-  selectedAccount = username;
-  loginInput = '';
-  document.getElementById('loginStepAccount').style.display = 'none';
-  document.getElementById('loginStepPwd').style.display = 'block';
-  document.getElementById('loginTargetUser').textContent = '👁 ' + username + ' 请输入6位密码';
-  var dots = document.querySelectorAll('#loginDots .login-dot');
-  dots.forEach(function(d) { d.classList.remove('filled', 'error'); });
-  document.getElementById('loginError').textContent = '';
-  renderLoginKeypad();
-}
-
-function goBackToAccountList() {
-  selectedAccount = null;
-  loginInput = '';
-  document.getElementById('loginStepPwd').style.display = 'none';
-  document.getElementById('loginStepAccount').style.display = 'block';
-  document.getElementById('loginError').textContent = '';
-}
-
-function showCreateAccount() {
-  document.getElementById('createAccountForm').style.display = 'block';
-  document.getElementById('newAccountName').value = '';
-  document.getElementById('createAccountError').textContent = '';
-  setTimeout(function() { document.getElementById('newAccountName').focus(); }, 100);
-}
-
-function hideCreateAccount() {
-  document.getElementById('createAccountForm').style.display = 'none';
-  document.getElementById('createAccountError').textContent = '';
-}
-
-async function doCreateAccount() {
-  var name = document.getElementById('newAccountName').value.trim();
-  var errEl = document.getElementById('createAccountError');
-  if (!name) { errEl.textContent = '请输入用户名'; return; }
-  if (name.length > 10) { errEl.textContent = '用户名最大10个字符'; return; }
-  if (accountList[name]) { errEl.textContent = '该用户名已存在'; return; }
-  accountList[name] = { passwordHash: hashPwd('123456'), createdAt: new Date().toISOString() };
-  await saveAccounts();
-  hideCreateAccount();
-  renderAccountList();
-  showToast('✅ 账户创建成功！初始密码：123456');
-  setTimeout(function() { selectAccount(name); }, 300);
-}
-
-function renderLoginKeypad() {
-  var pad = document.getElementById('loginKeypad');
-  if (!pad) return;
-  var nums = [1,2,3,4,5,6,7,8,9,'del',0,''];
-  pad.innerHTML = nums.map(function(n) {
-    if (n === '') return '<button class="keypad-btn empty"></button>';
-    if (n === 'del') return '<button class="keypad-btn del" onclick="loginKeyPress(\'del\')">⌫</button>';
-    return '<button class="keypad-btn" onclick="loginKeyPress(\'' + n + '\')">' + n + '</button>';
-  }).join('');
-}
-
-var loginInput = '';
-function loginKeyPress(key) {
-  var dots = document.querySelectorAll('#loginDots .login-dot');
-  var errEl = document.getElementById('loginError');
-
-  if (key === 'del') {
-    if (loginInput.length > 0) {
-      loginInput = loginInput.slice(0, -1);
-      dots[loginInput.length].classList.remove('filled', 'error');
-    }
-    errEl.textContent = '';
-    return;
-  }
-
-  if (loginInput.length >= 6) return;
-
-  loginInput += key;
-  dots[loginInput.length - 1].classList.add('filled');
-  errEl.textContent = '';
-
-  if (loginInput.length === 6) {
-    setTimeout(async function() {
-      var pwdHash = hashPwd(loginInput);
-      if (pwdHash === accountList[selectedAccount].passwordHash) {
-        currentUser = selectedAccount;
-        loginPassword = pwdHash;
-        localStorage.setItem('ledger_current_user', currentUser);
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('appWrapper').style.display = 'flex';
-        document.getElementById('fabBtn').style.display = 'flex';
-        initCurrentUserPasswords();
-        document.getElementById('sidebarUserName').textContent = currentUser;
-        document.getElementById('sidebarUserInfo').style.display = 'flex';
-        // 检查是否为默认密码，显示/隐藏提示
-        if (pwdHash === hashPwd('123456')) {
-          document.getElementById('defaultPwdTip').style.display = 'flex';
-        } else {
-          document.getElementById('defaultPwdTip').style.display = 'none';
-        }
-        showToast('✅ 欢迎回来，' + currentUser + '！');
-        await loadUserData();
-        initApp();
-      } else {
-        loginInput = '';
-        dots.forEach(function(d) { d.classList.add('error'); d.classList.remove('filled'); });
-        errEl.textContent = '❌ 密码错误，请重新输入';
-        vibrateDevice([100, 50, 100]);
-        setTimeout(function() {
-          dots.forEach(function(d) { d.classList.remove('error'); });
-          errEl.textContent = '';
-        }, 800);
-      }
-    }, 200);
-  }
-}
-
-function initCurrentUserPasswords() {
-  if (!currentUser) return;
-  var saved = getUserStore(currentUser, 'login_pwd');
-  if (!saved) {
-    loginPassword = hashPwd('123456');
-    setUserStore(currentUser, 'login_pwd', loginPassword);
-  } else {
-    loginPassword = saved;
-  }
-  var ds = getUserStore(currentUser, 'diary_pwd');
-  if (!ds) {
-    diaryPassword = '1234';
-    setUserStore(currentUser, 'diary_pwd', diaryPassword);
-  } else {
-    diaryPassword = ds;
-  }
-}
-
-async function switchAccount() {
-  saveRecords();
-  saveDiaryData();
-  currentUser = null;
-  records = [];
-  diaries = [];
-  selectedAccount = null;
-  loginInput = '';
-  document.getElementById('appWrapper').style.display = 'none';
-  document.getElementById('fabBtn').style.display = 'none';
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('loginStepPwd').style.display = 'none';
-  document.getElementById('loginStepAccount').style.display = 'block';
-  document.getElementById('sidebarUserInfo').style.display = 'none';
-  await loadAccounts();
-  renderAccountList();
-}
-
 // ============ 侧栏标题 ============
 async function saveSidebarTitle() {
   if (!currentUser) return;
   var v = document.getElementById('sidebarTitle').value.trim();
   if (v) {
-    setUserStore(currentUser, 'title', v);
+    setUserStore('title', v);
     document.getElementById('headerTitle').textContent = v;
   }
 }
 async function loadSidebarTitle() {
   if (!currentUser) return;
-  var s = getUserStore(currentUser, 'title') || '我的账本';
+  var s = getUserStore('title') || '我的账本';
   document.getElementById('sidebarTitle').value = s;
   document.getElementById('headerTitle').textContent = s;
 }
@@ -668,227 +466,15 @@ function switchDandelionTheme(theme) {
     showToast('🌼 浅黄主题');
   }
 
-  if (currentUser) setUserStore(currentUser, 'theme', theme);
+  if (currentUser) setUserStore('theme', theme);
   if (currentPageName === 'charts') renderCharts();
 }
 
 function loadDandelionTheme() {
-  var saved = (currentUser ? getUserStore(currentUser, 'theme') : null) || 'pink';
+  var saved = getUserStore('theme') || 'pink';
   var cyberLines = document.getElementById('dandelionCyberLines');
   if (saved === 'pink' && cyberLines) cyberLines.style.display = 'block';
   switchDandelionTheme(saved);
-}
-
-// ============ 修改密码弹窗 ============
-var changePwdStep = 'menu';
-var changePwdTempOld = '';
-var changePwdTempNew = '';
-
-function openChangePwdModal() {
-  changePwdStep = 'menu';
-  changePwdTempOld = '';
-  changePwdTempNew = '';
-  renderChangePwdMenu();
-  document.getElementById('changePwdModal').classList.add('show');
-}
-
-function renderChangePwdMenu() {
-  var body = document.getElementById('changePwdBody');
-  body.innerHTML =
-    '<p style="text-align:center;font-size:14px;margin-bottom:8px">请选择要修改的密码</p>' +
-    '<div style="display:flex;gap:10px">' +
-    '<button class="btn-save" style="flex:1;background:#e91e8c" onclick="startChangeLoginPwd()">🔐 登录密码<br><small>6位数字</small></button>' +
-    '<button class="btn-save" style="flex:1;background:#5b9bd5" onclick="startChangeDiaryPwd()">📑 日志密码<br><small>4位数字</small></button>' +
-    '</div>';
-}
-
-function renderChangePwdKeypad(elId, onPress) {
-  var pad = document.getElementById(elId);
-  if (!pad) return;
-  var nums = [1,2,3,4,5,6,7,8,9,'del',0,''];
-  pad.innerHTML = nums.map(function(n) {
-    if (n === '') return '<button class="keypad-btn empty"></button>';
-    if (n === 'del') return '<button class="keypad-btn del" onclick="' + onPress + '(\'del\')">⌫</button>';
-    return '<button class="keypad-btn" onclick="' + onPress + '(\'' + n + '\')">' + n + '</button>';
-  }).join('');
-}
-
-function startChangeLoginPwd() {
-  changePwdStep = 'login_old';
-  changePwdTempOld = '';
-  var body = document.getElementById('changePwdBody');
-  body.innerHTML =
-    '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:6px">请输入<b>当前</b>6位登录密码</p>' +
-    '<div class="login-dots" id="changePwdDots">' +
-    '<span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>' +
-    '<span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>' +
-    '</div>' +
-    '<p class="login-error" id="changePwdError"></p>' +
-    '<div class="login-keypad" id="changePwdKeypad"></div>';
-  renderChangePwdKeypad('changePwdKeypad', 'changeLoginPwdKeyPress');
-}
-
-function changeLoginPwdKeyPress(key) {
-  var dots = document.querySelectorAll('#changePwdDots .login-dot');
-  var errEl = document.getElementById('changePwdError');
-
-  if (key === 'del') {
-    if (changePwdTempOld.length > 0) {
-      changePwdTempOld = changePwdTempOld.slice(0, -1);
-      dots[changePwdTempOld.length].classList.remove('filled', 'error');
-    }
-    errEl.textContent = '';
-    return;
-  }
-  if (changePwdTempOld.length >= 6) return;
-  changePwdTempOld += key;
-  dots[changePwdTempOld.length - 1].classList.add('filled');
-  errEl.textContent = '';
-
-  if (changePwdTempOld.length === 6) {
-    setTimeout(function() {
-      if (hashPwd(changePwdTempOld) === loginPassword) {
-        changePwdStep = 'login_new';
-        changePwdTempNew = '';
-        var body = document.getElementById('changePwdBody');
-        body.innerHTML =
-          '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:6px">请输入<b>新</b>6位登录密码</p>' +
-          '<div class="login-dots" id="changePwdDots">' +
-          '<span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>' +
-          '<span class="login-dot"></span><span class="login-dot"></span><span class="login-dot"></span>' +
-          '</div>' +
-          '<p class="login-error" id="changePwdError"></p>' +
-          '<div class="login-keypad" id="changePwdKeypad"></div>';
-        renderChangePwdKeypad('changePwdKeypad', 'changeLoginNewKeyPress');
-      } else {
-        changePwdTempOld = '';
-        dots.forEach(function(d) { d.classList.add('error'); d.classList.remove('filled'); });
-        errEl.textContent = '❌ 密码错误';
-        vibrateDevice([100, 50, 100]);
-        setTimeout(function() {
-          dots.forEach(function(d) { d.classList.remove('error'); });
-          errEl.textContent = '';
-        }, 600);
-      }
-    }, 200);
-  }
-}
-
-function changeLoginNewKeyPress(key) {
-  var dots = document.querySelectorAll('#changePwdDots .login-dot');
-  var errEl = document.getElementById('changePwdError');
-
-  if (key === 'del') {
-    if (changePwdTempNew.length > 0) {
-      changePwdTempNew = changePwdTempNew.slice(0, -1);
-      dots[changePwdTempNew.length].classList.remove('filled', 'error');
-    }
-    errEl.textContent = '';
-    return;
-  }
-  if (changePwdTempNew.length >= 6) return;
-  changePwdTempNew += key;
-  dots[changePwdTempNew.length - 1].classList.add('filled');
-  errEl.textContent = '';
-
-  if (changePwdTempNew.length === 6) {
-    setTimeout(async function() {
-      loginPassword = hashPwd(changePwdTempNew);
-      accountList[currentUser].passwordHash = loginPassword;
-      await saveAccounts();
-      setUserStore(currentUser, 'login_pwd', loginPassword);
-      closeModal('changePwdModal');
-      // 密码已修改，隐藏默认密码提示
-      document.getElementById('defaultPwdTip').style.display = 'none';
-      showToast('✅ 登录密码已更新');
-    }, 200);
-  }
-}
-
-function startChangeDiaryPwd() {
-  changePwdStep = 'diary_old';
-  changePwdTempOld = '';
-  var body = document.getElementById('changePwdBody');
-  body.innerHTML =
-    '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:6px">请输入<b>当前</b>4位日志密码</p>' +
-    '<div class="pwd-dots" id="changeDiaryDots">' +
-    '<span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span>' +
-    '</div>' +
-    '<p class="login-error" id="changePwdError"></p>' +
-    '<div class="login-keypad" id="changePwdKeypad"></div>';
-  renderChangePwdKeypad('changePwdKeypad', 'changeDiaryPwdKeyPress');
-}
-
-function changeDiaryPwdKeyPress(key) {
-  var dots = document.querySelectorAll('#changeDiaryDots .pwd-dot');
-  var errEl = document.getElementById('changePwdError');
-
-  if (key === 'del') {
-    if (changePwdTempOld.length > 0) {
-      changePwdTempOld = changePwdTempOld.slice(0, -1);
-      dots[changePwdTempOld.length].classList.remove('filled', 'error');
-    }
-    errEl.textContent = '';
-    return;
-  }
-  if (changePwdTempOld.length >= 4) return;
-  changePwdTempOld += key;
-  dots[changePwdTempOld.length - 1].classList.add('filled');
-  errEl.textContent = '';
-
-  if (changePwdTempOld.length === 4) {
-    setTimeout(function() {
-      if (changePwdTempOld === diaryPassword) {
-        changePwdStep = 'diary_new';
-        changePwdTempNew = '';
-        var body = document.getElementById('changePwdBody');
-        body.innerHTML =
-          '<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:6px">请输入<b>新</b>4位日志密码</p>' +
-          '<div class="pwd-dots" id="changeDiaryDots">' +
-          '<span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span><span class="pwd-dot"></span>' +
-          '</div>' +
-          '<p class="login-error" id="changePwdError"></p>' +
-          '<div class="login-keypad" id="changePwdKeypad"></div>';
-        renderChangePwdKeypad('changePwdKeypad', 'changeDiaryNewKeyPress');
-      } else {
-        changePwdTempOld = '';
-        dots.forEach(function(d) { d.classList.add('error'); d.classList.remove('filled'); });
-        errEl.textContent = '❌ 密码错误';
-        vibrateDevice([100, 50, 100]);
-        setTimeout(function() {
-          dots.forEach(function(d) { d.classList.remove('error'); });
-          errEl.textContent = '';
-        }, 600);
-      }
-    }, 150);
-  }
-}
-
-function changeDiaryNewKeyPress(key) {
-  var dots = document.querySelectorAll('#changeDiaryDots .pwd-dot');
-  var errEl = document.getElementById('changePwdError');
-
-  if (key === 'del') {
-    if (changePwdTempNew.length > 0) {
-      changePwdTempNew = changePwdTempNew.slice(0, -1);
-      dots[changePwdTempNew.length].classList.remove('filled', 'error');
-    }
-    errEl.textContent = '';
-    return;
-  }
-  if (changePwdTempNew.length >= 4) return;
-  changePwdTempNew += key;
-  dots[changePwdTempNew.length - 1].classList.add('filled');
-  errEl.textContent = '';
-
-  if (changePwdTempNew.length === 4) {
-    setTimeout(function() {
-      diaryPassword = changePwdTempNew;
-      setUserStore(currentUser, 'diary_pwd', diaryPassword);
-      closeModal('changePwdModal');
-      showToast('✅ 日志密码已更新');
-    }, 150);
-  }
 }
 
 // ============ 记账 ============
@@ -954,10 +540,7 @@ function checkOverLimit(amount, recordDate) {
       .reduce(function(s, r) { return s + r.amount; }, 0);
     if (todayExpense > dl) {
       warnings.push({
-        type: 'daily',
-        limit: dl,
-        spent: todayExpense,
-        over: todayExpense - dl,
+        type: 'daily', limit: dl, spent: todayExpense, over: todayExpense - dl,
         msg: '今日支出 <b>' + fmtMoney(todayExpense) + '</b> 已超过日限额 <b>' + fmtMoney(dl) + '</b>'
       });
     }
@@ -970,10 +553,7 @@ function checkOverLimit(amount, recordDate) {
       .reduce(function(s, r) { return s + r.amount; }, 0);
     if (monthExpense > ml) {
       warnings.push({
-        type: 'monthly',
-        limit: ml,
-        spent: monthExpense,
-        over: monthExpense - ml,
+        type: 'monthly', limit: ml, spent: monthExpense, over: monthExpense - ml,
         msg: '本月支出 <b>' + fmtMoney(monthExpense) + '</b> 已超过月限额 <b>' + fmtMoney(ml) + '</b>'
       });
     }
@@ -1005,14 +585,9 @@ function confirmAdd() {
   var cat = map[currentCategory];
   var now = new Date().toISOString();
   var record = {
-    id: Date.now(),
-    date: recordDate,
-    type: currentType,
-    category: currentCategory,
-    amount: amount,
-    note: note,
-    createdAt: now,
-    updatedAt: now
+    id: Date.now(), date: recordDate, type: currentType,
+    category: currentCategory, amount: amount, note: note,
+    createdAt: now, updatedAt: now
   };
   records.push(record);
   saveRecords();
@@ -1246,7 +821,7 @@ function deleteRecord(id) {
   refreshAll();
 }
 
-// ============ 图表（分析页） ============
+// ============ 图表 ============
 var pieChart, lineChart, barChart;
 
 function destroyCharts() {
@@ -1314,22 +889,16 @@ function renderCharts() {
       data: {
         labels: cl.map(function(id) { return (EXPENSE_MAP[id] || {}).name || id; }),
         datasets: [{
-          data: cv,
-          backgroundColor: bgColors,
-          borderWidth: isCyber ? 2 : 3,
-          borderColor: isCyber ? '#1a0a14' : '#fff',
-          hoverBorderWidth: isCyber ? 4 : 4,
-          hoverBorderColor: isCyber ? '#39ff14' : '#fff',
+          data: cv, backgroundColor: bgColors,
+          borderWidth: isCyber ? 2 : 3, borderColor: isCyber ? '#1a0a14' : '#fff',
+          hoverBorderWidth: 4, hoverBorderColor: isCyber ? '#39ff14' : '#fff',
           borderRadius: isCyber ? 0 : 4
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: true, cutout: '55%',
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 }, color: isCyber ? '#ccc' : '#606266' }
-          },
+          legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 }, color: isCyber ? '#ccc' : '#606266' } },
           tooltip: {
             backgroundColor: isCyber ? '#2d0a1e' : undefined,
             titleColor: isCyber ? '#39ff14' : undefined,
@@ -1394,15 +963,7 @@ function renderCharts() {
       type: 'bar',
       data: {
         labels: cl.map(function(id) { return (EXPENSE_MAP[id] || {}).name || id; }),
-        datasets: [{
-          label: '支出金额',
-          data: cv,
-          backgroundColor: barColors,
-          borderColor: barBorderColors,
-          borderWidth: isCyber3 ? 2 : 1,
-          borderRadius: isCyber3 ? 6 : 10,
-          borderSkipped: false
-        }]
+        datasets: [{ label: '支出金额', data: cv, backgroundColor: barColors, borderColor: barBorderColors, borderWidth: isCyber3 ? 2 : 1, borderRadius: isCyber3 ? 6 : 10, borderSkipped: false }]
       },
       options: {
         responsive: true, maintainAspectRatio: true,
@@ -1416,14 +977,13 @@ function renderCharts() {
   }
 }
 
-// ============ 日志系统（含4位独立密码） ============
+// ============ 日志系统 ============
 function renderDiaryPage() {
   var today = getToday();
   var wd = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
   document.getElementById('diaryDate').textContent = '📮 ' + today + ' ' + wd[new Date().getDay()];
 
   var todayDiary = diaries.find(function(d) { return d.date === today; });
-  // 始终清空输入框和表情选择，已保存的内容显示在历史列表中
   document.getElementById('diaryContent').value = '';
   if (todayDiary) {
     document.querySelectorAll('.mood-btn').forEach(function(b) {
@@ -1476,11 +1036,8 @@ function saveDiary() {
   }
   saveDiaryData();
   showToast('✅ 心情日志已保存');
-
-  // 保存后自动清空输入框和已选表情
   document.getElementById('diaryContent').value = '';
   document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
-
   renderDiaryList();
 }
 
@@ -1530,7 +1087,6 @@ function diaryPwdKeyPress(key) {
   }
 
   if (diaryPwdInput.length >= 4) return;
-
   diaryPwdInput += key;
   dots[diaryPwdInput.length - 1].classList.add('filled');
   errEl.textContent = '';
@@ -1615,8 +1171,6 @@ async function initApp() {
   renderCatGrid();
   populateChartMonth();
   renderTodaySummary();
-  document.getElementById('sidebarUserName').textContent = currentUser;
-  document.getElementById('sidebarUserInfo').style.display = 'flex';
 }
 
 // ============ 超限顶部横幅 ============
@@ -1630,9 +1184,7 @@ function showOverlimitBanner(warnings) {
   text.textContent = msgs.join('；');
   banner.style.display = 'flex';
   clearTimeout(banner._hideTid);
-  banner._hideTid = setTimeout(function() {
-    banner.style.display = 'none';
-  }, 5000);
+  banner._hideTid = setTimeout(function() { banner.style.display = 'none'; }, 5000);
 }
 
 function dismissOverlimitBanner() {
@@ -1645,9 +1197,7 @@ function renderDiaryMonthSummary() {
   var container = document.getElementById('diaryMonthSummary');
   if (!container) return;
   var currentMonth = getCurrentMonth();
-  var monthDiaries = diaries.filter(function(d) {
-    return getMonthKey(d.date) === currentMonth;
-  });
+  var monthDiaries = diaries.filter(function(d) { return getMonthKey(d.date) === currentMonth; });
   if (monthDiaries.length === 0) {
     container.style.display = 'none';
     return;
@@ -1666,11 +1216,27 @@ function renderDiaryMonthSummary() {
 
 // ============ 启动 ============
 async function boot() {
-  await initLoginPassword();
-  renderAccountList();
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user.id;
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('appWrapper').style.display = 'flex';
+      document.getElementById('fabBtn').style.display = 'flex';
+      document.getElementById('sidebarUserName').textContent = session.user.email;
+      document.getElementById('sidebarUserInfo').style.display = 'flex';
+      var ds = localStorage.getItem('ledger_' + currentUser + '_diary_pwd');
+      diaryPassword = ds || '1234';
+      if (!ds) localStorage.setItem('ledger_' + currentUser + '_diary_pwd', diaryPassword);
+      await loadUserData();
+      initApp();
+      showToast('☁️ 云端同步已就绪');
+      return;
+    }
+  } catch(e) {}
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('sidebarUserInfo').style.display = 'none';
   showToast('☁️ 云端同步已就绪');
 }
 
-boot();
+// boot 会在 index.html 的 <script> 标签中调用

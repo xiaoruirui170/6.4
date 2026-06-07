@@ -102,12 +102,14 @@ https://022340508.anluwodejiaxiang.eu.cc/
 
 ```
 6.4/
-├── index.html          # 主程序（包含 HTML + CSS + JavaScript 全部代码）
-├── README.md           # 项目说明文档
-└── README.pdf          # 项目说明文档（PDF 版本）
+├── index.html              # 主程序（包含 HTML + CSS + JavaScript 全部代码）
+├── styles.css              # CSS 样式文件（独立拆分版）
+├── app.js                  # JavaScript 逻辑文件（独立拆分版）
+├── README.md               # 项目说明文档（Markdown 格式）
+└── README_preview.html     # 项目说明文档（HTML 格式，可打印为 PDF）
 ```
 
-本项目采用**单文件架构**，将 HTML 结构、CSS 样式和 JavaScript 逻辑全部集成在一个 `index.html` 文件中，方便部署和分发。
+本项目主文件 `index.html` 为**单文件架构**，将 HTML 结构、CSS 样式和 JavaScript 逻辑全部集成在一个文件中，方便部署和分发。同时提供独立的 `styles.css` 和 `app.js` 文件方便查看源码。
 
 ---
 
