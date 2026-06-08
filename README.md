@@ -36,17 +36,15 @@
 
 ## 摘要
 
-本项目「我的账本」是一款基于纯 HTML+CSS+JavaScript（ES6+）原生技术开发的个人记账 Web 应用，灵感源于对市面上手机记账 App 广告多、功能臃肿的不满，旨在打造轻量级、无广告、高隐私的收支管理工具。
+本项目「我的账本」是一款基于纯 HTML+CSS+JavaScript 原生技术开发的个人记账 Web 应用。针对市面上手机记账 App 广告繁多、功能臃肿、隐私收集等痛点，本项目旨在打造一款轻量级、无广告、高隐私的收支管理工具，为用户提供简洁高效的记账体验。
 
-项目前端采用 CSS 变量（root 自定义属性）配合 `body.theme-pink` / `body.theme-blue` / `body.theme-yellow` 三类选择器实现蒲公英主题全局换肤，其中赛博玫红主题包含扫描线动画、荧光绿特效等赛博朋克风格；Flexbox 布局实现左侧 200px 固定侧边栏 + 右侧自适应内容区，通过 `@media (max-width:768px)` 和 `max-width:400px` 两档断点适配移动端。
+项目前端采用 Flexbox 左右分栏布局，左侧固定 200px 导航侧边栏配合右侧自适应内容区，通过 CSS 变量实现蒲公英主题（赛博玫红 / 浅蓝 / 浅黄）三套全局换肤功能，赛博玫红主题还包含扫描线动画与霓虹荧光特效，视觉效果突出。页面通过两档响应式断点适配桌面端与移动端访问。
 
-后端服务完全由 Supabase BaaS 平台提供：通过 `@supabase/supabase-js@2` CDN 引入客户端 SDK，使用 `signInWithPassword` / `signUp` API 实现邮箱密码认证，Auth session 自动持久化实现刷新免登录；数据存储使用 Supabase PostgreSQL 云数据库，通过 `records`、`diaries`、`user_settings` 三张表配合 RLS 行级安全策略实现多账户数据隔离。
+后端服务由 Supabase BaaS 平台提供：利用 Supabase Auth 实现邮箱密码注册与登录认证，会话自动持久化确保刷新免登录；数据存储使用 Supabase PostgreSQL 云数据库，创建 records、diaries、user_settings 三张数据表，并通过 RLS 行级安全策略实现多账户数据隔离。数据同步采用「本地优先」策略——优先从 localStorage 读取缓存实现秒级界面响应，后台异步拉取云端数据并按时间戳智能合并去重，本地写入时同步 upsert 至云端，兼顾离线可用性与多设备数据一致性。
 
-数据策略采用「本地优先（Local-First）」模式：`loadUserData()` 先从 localStorage 读取缓存实现秒级界面渲染，`syncUserDataFromCloud()` 后台异步拉取云端数据与本地按 `createdAt` 时间戳智能合并去重，`saveRecords()` + `saveRecordsToCloud()` 实现本地即写 + 后台 upsert 双向同步，保证离线可用与多设备数据一致。
+项目引入 Chart.js 可视化库绘制环形图（消费占比）、折线图（收支趋势）、柱状图（类别排行），直观呈现用户消费数据。核心功能涵盖 12 类支出与 6 类收入的快捷记账、按月按类型筛选流水明细、emoji 心情日志（数字密码保护 + 月度汇总）、日限额与月限额超限震动警告、CSV 数据导出、侧边栏标题自定义编辑及云端持久化。
 
-JavaScript 使用 async/await 处理异步操作，通过 CDN 引入 Chart.js v4.4 绘制 doughnut 环形图（消费占比）、line 折线图（收支趋势）、bar 柱状图（类别排行），切换月份前调用 `destroyCharts()` 逐个 `.destroy()` 避免 Canvas 叠加。功能涵盖 12 类支出/6 类收入快捷记账、按月流水明细（类型筛选+时间排序）、emoji 心情日志（4 位密码保护+月度汇总）、日月限额超限震动警告、CSV 导出、侧边栏标题自定义编辑并云端持久化。
-
-项目部署于 GitHub Pages（https://xiaoruirui170.github.io/6.4/），代码托管于 GitHub（https://github.com/xiaoruirui170/6.4），开发过程中借助 CodeBuddy AI 辅助编码、文档撰写与 Bug 排查。
+项目部署于 GitHub Pages（https://xiaoruirui170.github.io/6.4/），代码托管于 GitHub（https://github.com/xiaoruirui170/6.4），开发过程中借助 CodeBuddy AI 辅助需求梳理、代码实现、Bug 排查与文档撰写。通过本项目实践，深入掌握了前后端分离架构思想、BaaS 云服务集成、Local-First 数据同步策略、响应式布局设计以及数据可视化开发等核心技能，为后续全栈开发积累了宝贵经验。
 
 ---
 
