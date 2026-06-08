@@ -36,11 +36,17 @@
 
 ## 摘要
 
-本项目「我的账本」是一款基于 Web 的个人记账应用，采用纯 HTML+CSS+JavaScript 原生技术开发，通过 Supabase BaaS 平台提供云端数据库与用户认证服务。
+本项目「我的账本」是一款基于纯 HTML+CSS+JavaScript（ES6+）原生技术开发的个人记账 Web 应用，灵感源于对市面上手机记账 App 广告多、功能臃肿的不满，旨在打造轻量级、无广告、高隐私的收支管理工具。
 
-项目使用 Supabase Auth 实现邮箱密码注册登录，支持收支记账、数据可视化分析（Chart.js）、心情日志、日月限额管理等功能。采用本地优先（Local-First）数据策略，localStorage 缓存确保秒级响应，后台通过 Supabase REST API 异步同步到 PostgreSQL 云数据库，实现多设备数据一致。
+项目前端采用 CSS 变量（root 自定义属性）配合 `body.theme-pink` / `body.theme-blue` / `body.theme-yellow` 三类选择器实现蒲公英主题全局换肤，其中赛博玫红主题包含扫描线动画、荧光绿特效等赛博朋克风格；Flexbox 布局实现左侧 200px 固定侧边栏 + 右侧自适应内容区，通过 `@media (max-width:768px)` 和 `max-width:400px` 两档断点适配移动端。
 
-样式系统使用 CSS 变量配合 body.theme 类选择器实现三套主题换肤，含赛博朋克风格暗色主题。通过 Flexbox 响应式布局适配桌面端与移动端。
+后端服务完全由 Supabase BaaS 平台提供：通过 `@supabase/supabase-js@2` CDN 引入客户端 SDK，使用 `signInWithPassword` / `signUp` API 实现邮箱密码认证，Auth session 自动持久化实现刷新免登录；数据存储使用 Supabase PostgreSQL 云数据库，通过 `records`、`diaries`、`user_settings` 三张表配合 RLS 行级安全策略实现多账户数据隔离。
+
+数据策略采用「本地优先（Local-First）」模式：`loadUserData()` 先从 localStorage 读取缓存实现秒级界面渲染，`syncUserDataFromCloud()` 后台异步拉取云端数据与本地按 `createdAt` 时间戳智能合并去重，`saveRecords()` + `saveRecordsToCloud()` 实现本地即写 + 后台 upsert 双向同步，保证离线可用与多设备数据一致。
+
+JavaScript 使用 async/await 处理异步操作，通过 CDN 引入 Chart.js v4.4 绘制 doughnut 环形图（消费占比）、line 折线图（收支趋势）、bar 柱状图（类别排行），切换月份前调用 `destroyCharts()` 逐个 `.destroy()` 避免 Canvas 叠加。功能涵盖 12 类支出/6 类收入快捷记账、按月流水明细（类型筛选+时间排序）、emoji 心情日志（4 位密码保护+月度汇总）、日月限额超限震动警告、CSV 导出、侧边栏标题自定义编辑并云端持久化。
+
+项目部署于 GitHub Pages（https://xiaoruirui170.github.io/6.4/），代码托管于 GitHub（https://github.com/xiaoruirui170/6.4），开发过程中借助 CodeBuddy AI 辅助编码、文档撰写与 Bug 排查。
 
 ---
 
